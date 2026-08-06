@@ -93,7 +93,9 @@ Then open `http://127.0.0.1:8000/` and enter the configured credential. Do not c
 credentials. `INVENTORY_DATA_PATH` can override the default
 `Requirements/inventory_data.json` source and `INVENTORY_DB_PATH` can override the default
 `var/inventory.sqlite3` destination. Relative paths resolve from the project root.
-`GEMINI_MODEL` defaults to `gemini-3.6-flash`. `CHAT_COOKIE_SECURE` defaults to false for local
+`GEMINI_MODEL` defaults to `gemini-3.5-flash-lite`, prioritizing demo quota availability, latency,
+and cost while deterministic application validation protects authoritative results.
+`CHAT_COOKIE_SECURE` defaults to false for local
 HTTP and is set to true by the Render Blueprint.
 
 To build the same snapshot without starting the web application or requiring demo credentials:

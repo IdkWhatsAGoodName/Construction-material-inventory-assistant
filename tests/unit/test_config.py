@@ -61,6 +61,15 @@ def test_optional_gemini_settings_and_cookie_security(monkeypatch: pytest.Monkey
     assert settings.chat_cookie_secure is True
 
 
+def test_default_gemini_model_is_flash_lite(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("DEMO_USERNAME", "user")
+    monkeypatch.setenv("DEMO_PASSWORD", "password")
+
+    settings = Settings.from_environment()
+
+    assert settings.gemini_model == "gemini-3.5-flash-lite"
+
+
 def test_invalid_cookie_security_setting_is_rejected(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("DEMO_USERNAME", "user")
     monkeypatch.setenv("DEMO_PASSWORD", "password")

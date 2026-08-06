@@ -49,7 +49,7 @@ class Settings:
             inventory_data_path=inventory_data_path_from_environment(),
             inventory_db_path=inventory_database_path_from_environment(),
             gemini_api_key=os.environ.get("GEMINI_API_KEY") or None,
-            gemini_model=os.environ.get("GEMINI_MODEL", "gemini-3.6-flash"),
+            gemini_model=os.environ.get("GEMINI_MODEL", "gemini-3.5-flash-lite"),
             chat_cookie_secure=_boolean_from_environment("CHAT_COOKIE_SECURE", default=False),
         )
 
