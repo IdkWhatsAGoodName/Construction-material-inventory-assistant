@@ -1,0 +1,25 @@
+meta {
+  name: Web - Static Styles
+  type: http
+  seq: 10
+}
+
+get {
+  url: {{baseUrl}}/static/styles.css
+  body: none
+  auth: basic
+}
+
+auth:basic {
+  username: {{demoUsername}}
+  password: {{demoPassword}}
+}
+
+tests {
+  test("returns the protected stylesheet", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getHeader("content-type")).to.contain("text/css");
+    expect(res.getBody()).to.contain(".page-header");
+  });
+}
+

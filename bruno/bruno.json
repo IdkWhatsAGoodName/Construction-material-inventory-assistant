@@ -1,0 +1,10 @@
+{
+  "version": "1",
+  "name": "Construction Material Inventory Assistant",
+  "type": "collection",
+  "ignore": [
+    "node_modules",
+    ".git"
+  ]
+}
+

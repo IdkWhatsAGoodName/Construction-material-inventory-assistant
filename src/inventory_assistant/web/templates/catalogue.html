@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Construction Material Catalogue</title>
+    <link rel="stylesheet" href="{{ url_for('static', path='/styles.css') }}">
+  </head>
+  <body>
+    <header class="page-header">
+      <div>
+        <p class="eyebrow">Inventory assistant demo</p>
+        <h1>Construction material catalogue</h1>
+        <p class="lede">
+          {{ summary.dataset_name }} · As of {{ summary.as_of_date }} · {{ summary.currency }}
+        </p>
+      </div>
+      <dl class="counts" aria-label="Dataset counts">
+        <div><dt>Suppliers</dt><dd>{{ summary.supplier_count }}</dd></div>
+        <div><dt>Materials</dt><dd>{{ summary.material_count }}</dd></div>
+      </dl>
+    </header>
+
+    <main>
+      <p class="source-note">{{ summary.notes }}</p>
+
+      <form class="search" method="get" action="/" role="search">
+        <label for="catalogue-query">Filter materials</label>
+        <div class="search-controls">
+          <input
+            id="catalogue-query"
+            name="q"
+            type="search"
+            maxlength="100"
+            value="{{ query }}"
+            placeholder="SKU, description, category, grade, or warehouse"
+          >
+          <button type="submit">Search</button>
+          {% if query %}<a href="/" class="clear-link">Clear</a>{% endif %}
+        </div>
+      </form>
+
+      <p class="results-summary">
+        Showing {{ result_count }} of {{ summary.material_count }} materials
+        {% if query %}for “{{ query }}”{% endif %}.
+      </p>
+
+      {% if materials %}
+      <div class="table-wrap">
+        <table>
+          <caption class="visually-hidden">Construction material catalogue results</caption>
+          <thead>
+            <tr>
+              <th scope="col">SKU</th>
+              <th scope="col">Description</th>
+              <th scope="col">Category</th>
+              <th scope="col">Warehouse</th>
+              <th scope="col">On hand</th>
+              <th scope="col">Reserved</th>
+              <th scope="col">Unit price</th>
+              <th scope="col">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for material in materials %}
+            <tr>
+              <th scope="row"><code>{{ material.sku }}</code></th>
+              <td>
+                {{ material.description }}
+                {% if material.spec_grade %}<span class="spec">{{ material.spec_grade }}</span>{% endif %}
+              </td>
+              <td>{{ material.category }}</td>
+              <td>{{ material.warehouse }}</td>
+              <td class="numeric">{{ material.qty_on_hand }} {{ material.unit_of_measure }}</td>
+              <td class="numeric">{{ material.qty_reserved }} {{ material.unit_of_measure }}</td>
+              <td class="numeric">{{ "%.2f"|format(material.unit_price) }} {{ material.currency }}</td>
+              <td>
+                {% if material.discontinued %}
+                <span class="status status-discontinued">Discontinued</span>
+                {% else %}
+                <span class="status">Active</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <section class="empty-state" aria-live="polite">
+        <h2>No matching materials</h2>
+        <p>The catalogue contains no literal match for “{{ query }}”. Try another term or clear the filter.</p>
+      </section>
+      {% endif %}
+    </main>
+  </body>
+</html>
+

@@ -1,0 +1,31 @@
+meta {
+  name: Catalog - All Materials
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/api/catalog/materials
+  body: none
+  auth: basic
+}
+
+auth:basic {
+  username: {{demoUsername}}
+  password: {{demoPassword}}
+}
+
+tests {
+  test("returns the complete source catalogue", function () {
+    const body = res.getBody();
+
+    expect(res.getStatus()).to.equal(200);
+    expect(body.count).to.equal(77);
+    expect(body.total).to.equal(77);
+    expect(body.query).to.equal("");
+    expect(body.items).to.have.lengthOf(77);
+    expect(body.items[0].sku).to.equal("STL-W12X40-A992");
+    expect(body.items[0]).not.to.have.property("qty_available");
+  });
+}
+

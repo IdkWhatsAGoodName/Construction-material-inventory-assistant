@@ -1,0 +1,30 @@
+meta {
+  name: Documentation - OpenAPI Schema
+  type: http
+  seq: 7
+}
+
+get {
+  url: {{baseUrl}}/openapi.json
+  body: none
+  auth: basic
+}
+
+auth:basic {
+  username: {{demoUsername}}
+  password: {{demoPassword}}
+}
+
+tests {
+  test("returns the protected OpenAPI contract", function () {
+    const body = res.getBody();
+
+    expect(res.getStatus()).to.equal(200);
+    expect(body.info.title).to.equal("Construction Material Inventory Assistant");
+    expect(body.paths).to.have.property("/health/live");
+    expect(body.paths).to.have.property("/health/ready");
+    expect(body.paths).to.have.property("/api/catalog/summary");
+    expect(body.paths).to.have.property("/api/catalog/materials");
+  });
+}
+

@@ -1,0 +1,28 @@
+meta {
+  name: Web - Catalogue Page
+  type: http
+  seq: 6
+}
+
+get {
+  url: {{baseUrl}}/
+  body: none
+  auth: basic
+}
+
+auth:basic {
+  username: {{demoUsername}}
+  password: {{demoPassword}}
+}
+
+tests {
+  test("renders the protected catalogue page", function () {
+    const body = res.getBody();
+
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getHeader("content-type")).to.contain("text/html");
+    expect(body).to.contain("Construction material catalogue");
+    expect(body).to.contain("Showing 77 of 77 materials");
+  });
+}
+

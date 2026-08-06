@@ -1,0 +1,30 @@
+meta {
+  name: Catalog - Summary
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/api/catalog/summary
+  body: none
+  auth: basic
+}
+
+auth:basic {
+  username: {{demoUsername}}
+  password: {{demoPassword}}
+}
+
+tests {
+  test("returns source metadata and expected counts", function () {
+    const body = res.getBody();
+
+    expect(res.getStatus()).to.equal(200);
+    expect(body.dataset_name).to.equal("Inventory sample data");
+    expect(body.as_of_date).to.equal("2026-08-01");
+    expect(body.currency).to.equal("CAD");
+    expect(body.supplier_count).to.equal(9);
+    expect(body.material_count).to.equal(77);
+  });
+}
+

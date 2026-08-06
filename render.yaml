@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: sidian-inventory-assistant-demo
+    runtime: python
+    plan: free
+    region: ohio
+    repo: https://github.com/IdkWhatsAGoodName/Construction-material-inventory-assistant
+    branch: main
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn inventory_assistant.main:app --app-dir src --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health/ready
+    autoDeployTrigger: checksPass
+    envVars:
+      - key: DEMO_USERNAME
+        sync: false
+      - key: DEMO_PASSWORD
+        sync: false

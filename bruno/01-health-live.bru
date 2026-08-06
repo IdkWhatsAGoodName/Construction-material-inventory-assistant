@@ -1,0 +1,19 @@
+meta {
+  name: Health - Live
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/health/live
+  body: none
+  auth: none
+}
+
+tests {
+  test("returns the public liveness result", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.deep.equal({ status: "alive" });
+  });
+}
+

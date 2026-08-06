@@ -1,0 +1,1 @@
+"""Inventory data access implementations."""

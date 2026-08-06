@@ -1,0 +1,1 @@
+"""Construction material inventory assistant."""

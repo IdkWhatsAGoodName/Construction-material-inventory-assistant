@@ -1,0 +1,21 @@
+meta {
+  name: Security - Missing Credentials
+  type: http
+  seq: 11
+}
+
+get {
+  url: {{baseUrl}}/api/catalog/summary
+  body: none
+  auth: none
+}
+
+tests {
+  test("rejects a protected endpoint without credentials", function () {
+    expect(res.getStatus()).to.equal(401);
+    expect(res.getBody()).to.deep.equal({ detail: "Unauthorized" });
+    expect(res.getHeader("www-authenticate")).to.equal("Basic");
+    expect(res.getHeader("cache-control")).to.equal("no-store");
+  });
+}
+

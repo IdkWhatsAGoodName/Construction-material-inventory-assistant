@@ -1,0 +1,25 @@
+meta {
+  name: Documentation - ReDoc
+  type: http
+  seq: 9
+}
+
+get {
+  url: {{baseUrl}}/redoc
+  body: none
+  auth: basic
+}
+
+auth:basic {
+  username: {{demoUsername}}
+  password: {{demoPassword}}
+}
+
+tests {
+  test("renders the protected ReDoc page", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getHeader("content-type")).to.contain("text/html");
+    expect(res.getBody()).to.contain("ReDoc");
+  });
+}
+

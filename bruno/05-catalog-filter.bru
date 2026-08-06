@@ -1,0 +1,33 @@
+meta {
+  name: Catalog - Filter Materials
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{baseUrl}}/api/catalog/materials
+  body: none
+  auth: basic
+}
+
+params:query {
+  q: W12X40
+}
+
+auth:basic {
+  username: {{demoUsername}}
+  password: {{demoPassword}}
+}
+
+tests {
+  test("returns only the literal catalogue match", function () {
+    const body = res.getBody();
+
+    expect(res.getStatus()).to.equal(200);
+    expect(body.count).to.equal(1);
+    expect(body.total).to.equal(77);
+    expect(body.query).to.equal("W12X40");
+    expect(body.items[0].sku).to.equal("STL-W12X40-A992");
+  });
+}
+

@@ -13,6 +13,7 @@
 - Keep in mind that this is a small demonstration exercise, so choose free tools and hosting when practical.
 - Prioritize designs and tools that enable fast development at small scale, and document what would be changed or added with more time and resources in the "Future TODOs" section.
 - Never create commits or push commits, tags, branches, or other Git refs to a remote repository on the human’s behalf. Leave code change ready on local and let human manage source control.
+- Always remember to add Bruno requests for testing after implementing code where applicable. Leave request validation to human.
 
 
 # Design and implementation plans
@@ -21,7 +22,7 @@
 
 Build the construction material inventory assistant specified in `Requirements/README.md`. The delivered program must ingest the supplied synthetic JSON, expose deterministic inventory and ordering behavior, provide a conversational web interface, and be deployable at a public URL. Every number shown to a user must originate from application code operating on the source data/database, never from model-generated knowledge.
 
-Current status: architecture decisions and the steelthread 1 external-tooling gate are complete; no application code has been implemented. Python 3.13, Git, GitHub CLI, Render CLI, the curated GitHub and Render Codex plugins, and Render MCP are installed and verified. Use authenticated GitHub CLI for programmatic GitHub operations: the human explicitly waived the GitHub App connector check after Codex CLI's connector-directory request was blocked by a Cloudflare challenge even though Codex Doctor and GitHub CLI authentication passed.
+Current status: steelthread 1 is implemented and locally verified but not yet deployed. The FastAPI application validates and reads the supplied JSON, serves the protected catalogue and catalogue APIs, and exposes public health checks. All 45 tests, Ruff checks, dependency consistency, a local Uvicorn smoke test, and Render Blueprint validation pass. The human must review, commit, and push the uncommitted changes before CI, Blueprint creation, and public-URL verification can complete the steelthread. Python 3.13, Git, GitHub CLI, Render CLI, the curated GitHub and Render Codex plugins, and Render MCP are installed and verified. Use authenticated GitHub CLI for programmatic GitHub operations: the human explicitly waived the GitHub App connector check after Codex CLI's connector-directory request was blocked by a Cloudflare challenge even though Codex Doctor and GitHub CLI authentication passed.
 
 ## Agreed demo design
 
@@ -33,6 +34,7 @@ Current status: architecture decisions and the steelthread 1 external-tooling ga
 - Keep unresolved over-allocations persistently visible through a non-modal inventory-warning banner on protected browser pages, backed by a deterministic `GET /api/inventory/alerts` endpoint and linked to the affected materials. Calculate the warning on initial page load and refresh it after successful order mutations; do not poll when no external inventory updates can occur, repeatedly inject it into chat responses, or use recurring toasts or dialogs. Render an initial warning as ordinary semantic content and expose a dynamically changed warning as an accessible, non-focus-stealing status message. The demo has no correction workflow, so state that in the status message. See the W3C [Alert Pattern](https://www.w3.org/WAI/ARIA/apg/patterns/alert/) and [status-message guidance](https://www.w3.org/WAI/WCAG22/Understanding/status-messages.html).
 - Keep domain rules and application services independent of HTTP, persistence, and the LLM provider. HTTP routes and agent tools must call the same application services so their behavior cannot diverge.
 - Use in-process application-service calls for agent tools in the demo. Do not make the agent call the application's own HTTP API.
+- Keep the protected `GET /api/catalog/summary` endpoint for the browser UI and operational source metadata. It returns only the dataset name, as-of date, currency, notes, and record counts, not raw supplier or material records. Do not expose this endpoint or arbitrary HTTP access to Gemini; the later provider adapter receives only the explicitly declared inventory and ordering tool schemas.
 - Use Gemini's free tier through the Interactions API as the initial LLM provider behind a narrow provider interface. Use the stable `gemini-3.6-flash` model by default and make the model ID configurable through an environment variable. Only one provider implementation is in demo scope. The free tier's data-use terms must be documented. See the [Gemini API reference](https://ai.google.dev/api), [latest-model guidance](https://ai.google.dev/gemini-api/docs/latest-model), and [pricing](https://ai.google.dev/gemini-api/docs/pricing).
 - Make the LLM optional to the core application. Catalogue browsing, deterministic APIs, and order operations must remain usable without an API key or during provider failure; only conversational interpretation may become unavailable.
 - Limit the LLM to selecting typed tools and supplying arguments. It must not receive direct database access, calculate inventory figures, enforce business rules, or write the factual response. Declare Gemini function schemas explicitly, disable automatic function execution, validate proposed arguments in application code, execute application services manually, and present their complete deterministic messages verbatim without a second model narration step. See [Gemini function calling](https://ai.google.dev/gemini-api/docs/function-calling) and the [Google Gen AI Python SDK](https://googleapis.github.io/python-genai/index.html).
@@ -84,6 +86,7 @@ Do not split the demo into separately deployed frontend, agent, and inventory se
 Each numbered step is independently runnable and is completed only when its stated verification passes. Do not begin a later step by breaking or replacing the working path from an earlier one.
 
 1. **Deployed JSON-reading web MVP**
+   - Status: implementation and local verification are complete; human commit/push, CI verification, initial Render Blueprint creation, and public smoke testing remain.
    - Scaffold the FastAPI service, `pyproject.toml`, compiled requirement files, Ruff/pytest configuration, tests, and minimal browser page.
    - Load and validate `Requirements/inventory_data.json` through a JSON repository without mutating it.
    - Expose a health endpoint, dataset metadata, and a browsable material list with basic text filtering.
