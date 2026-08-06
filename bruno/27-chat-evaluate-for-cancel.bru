@@ -1,0 +1,32 @@
+meta {
+  name: Chat - Evaluate Order for Cancellation
+  type: http
+  seq: 27
+}
+
+post {
+  url: {{baseUrl}}/api/chat
+  body: json
+  auth: basic
+}
+
+auth:basic {
+  username: {{demoUsername}}
+  password: {{demoPassword}}
+}
+
+body:json {
+  { "message": "Evaluate an order for 2 lengths of RBR-15M-400W, but do not confirm it." }
+}
+
+script:post-response {
+  const body = res.getBody();
+  bru.setVar("chatCancelReference", body.pending_orders[0].reference);
+}
+
+tests {
+  test("creates another pending chat order", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody().pending_orders.length).to.be.greaterThan(0);
+  });
+}

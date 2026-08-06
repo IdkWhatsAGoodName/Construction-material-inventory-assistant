@@ -1,0 +1,33 @@
+meta {
+  name: Chat - Compound Supplier and Inventory
+  type: http
+  seq: 24
+}
+
+post {
+  url: {{baseUrl}}/api/chat
+  body: json
+  auth: basic
+}
+
+auth:basic {
+  username: {{demoUsername}}
+  password: {{demoPassword}}
+}
+
+body:json {
+  { "message": "Who supplies our rebar and what are their terms? Also, how many 20M epoxy coated rebars can we ship?" }
+}
+
+tests {
+  test("fulfils both parts with ordered verified results", function () {
+    const body = res.getBody();
+    const tools = body.verified_results.map((item) => item.tool);
+    const messages = body.verified_results.map((item) => item.message).join("\n");
+    expect(res.getStatus()).to.equal(200);
+    expect(tools).to.include("get_supplier_terms");
+    expect(tools).to.include("query_inventory");
+    expect(messages).to.include("NET30");
+    expect(messages).to.include("0 each can ship");
+  });
+}

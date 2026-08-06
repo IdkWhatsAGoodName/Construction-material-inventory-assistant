@@ -116,6 +116,134 @@ main {
   margin-top: 0;
 }
 
+.chat-panel {
+  margin: 1.5rem 0;
+  padding: 1.25rem;
+  border: 2px solid #3d6650;
+  border-radius: 0.75rem;
+  background: #f6faf7;
+}
+
+.chat-heading,
+.chat-controls {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.chat-heading h2,
+.chat-bubble h3,
+.verified-result h3,
+.pending-orders h3 {
+  margin-top: 0;
+}
+
+.chat-availability {
+  padding: 0.3rem 0.65rem;
+  border-radius: 999px;
+  color: #6e3318;
+  background: #f7dfd1;
+  white-space: nowrap;
+}
+
+.chat-availability.available {
+  color: #174f2b;
+  background: #dcebdd;
+}
+
+.chat-explanation,
+.chat-note,
+.chat-empty {
+  color: #4d5a51;
+}
+
+.chat-transcript {
+  display: grid;
+  gap: 0.75rem;
+  max-height: 32rem;
+  margin: 1rem 0;
+  padding: 1rem;
+  overflow-y: auto;
+  border: 1px solid #c9d2ca;
+  border-radius: 0.6rem;
+  background: #fff;
+}
+
+.chat-bubble,
+.verified-result {
+  max-width: 90%;
+  padding: 0.8rem 1rem;
+  border-radius: 0.65rem;
+}
+
+.chat-bubble p,
+.verified-result p {
+  margin-bottom: 0;
+}
+
+.chat-bubble-user {
+  justify-self: end;
+  background: #e5eee7;
+}
+
+.chat-bubble-gemini {
+  justify-self: start;
+  background: #eee9f7;
+}
+
+.chat-bubble-gemini h3 span {
+  font-size: 0.8em;
+  font-weight: normal;
+}
+
+.verified-result {
+  justify-self: stretch;
+  max-width: none;
+  border: 2px solid #386048;
+  background: #f3faf4;
+}
+
+.verified-result-invalid,
+.verified-result-error,
+.verified-result-limit {
+  border-color: #9a4e26;
+  background: #fff5ed;
+}
+
+.verified-label {
+  margin: 0 0 0.2rem;
+  color: #25513a;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.pending-orders {
+  margin: 1rem 0;
+  padding: 0.8rem 1rem;
+  border-left: 4px solid #8b6d22;
+  background: #fff9e8;
+}
+
+.chat-form label {
+  display: block;
+  margin-bottom: 0.35rem;
+  font-weight: 700;
+}
+
+.chat-controls textarea {
+  flex: 1;
+  min-width: 0;
+  padding: 0.65rem;
+  resize: vertical;
+}
+
+#chat-status {
+  min-height: 1.5rem;
+}
+
 .search {
   margin-block: 2rem 1rem;
 }
@@ -364,5 +492,14 @@ tr:target > * {
 
   .order-fields {
     grid-template-columns: 1fr;
+  }
+
+  .chat-heading,
+  .chat-controls {
+    flex-direction: column;
+  }
+
+  .chat-controls button {
+    width: 100%;
   }
 }

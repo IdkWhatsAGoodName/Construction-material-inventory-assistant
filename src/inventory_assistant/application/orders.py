@@ -78,6 +78,13 @@ class OrderConfirmation:
 
 
 @dataclass(frozen=True, slots=True)
+class OrderCancellation:
+    message: str
+    requested_quantity: int
+    sku: str
+
+
+@dataclass(frozen=True, slots=True)
 class _PendingEntry:
     order: PendingOrder
     expires_at: datetime
@@ -134,6 +141,17 @@ class ConfirmationRegistry:
             self._pending.pop(token, None)
             self._terminal[token] = result
             return result
+
+    def cancel(self, token: str) -> PendingOrder:
+        """Invalidate an unconfirmed token and return its deterministic details."""
+
+        with self._lock:
+            entry = self._pending.get(token)
+            if entry is None or entry.deadline <= self._monotonic():
+                self._pending.pop(token, None)
+                raise ConfirmationNotFound(token)
+            del self._pending[token]
+            return entry.order
 
     def _prune_expired_locked(self) -> None:
         now = self._monotonic()
@@ -242,6 +260,17 @@ class OrderService:
 
     def confirm(self, confirmation_token: str) -> OrderConfirmation:
         return self._registry.confirm(confirmation_token, self._confirm_pending)
+
+    def cancel(self, confirmation_token: str) -> OrderCancellation:
+        pending = self._registry.cancel(confirmation_token)
+        return OrderCancellation(
+            message=(
+                f"Pending order for {pending.sku} with requested quantity "
+                f"{pending.requested_quantity} was cancelled. No inventory was reserved."
+            ),
+            requested_quantity=pending.requested_quantity,
+            sku=pending.sku,
+        )
 
     def _confirm_pending(self, pending: PendingOrder) -> OrderConfirmation:
         reservation = self._reservations.reserve_if_unchanged(

@@ -1,0 +1,30 @@
+meta {
+  name: Chat - Confirm Pending Order
+  type: http
+  seq: 26
+}
+
+post {
+  url: {{baseUrl}}/api/chat
+  body: json
+  auth: basic
+}
+
+auth:basic {
+  username: {{demoUsername}}
+  password: {{demoPassword}}
+}
+
+body:json {
+  { "message": "Confirm pending order {{chatPendingReference}}." }
+}
+
+tests {
+  test("confirms through the deterministic reservation service", function () {
+    const body = res.getBody();
+    const result = body.verified_results.find((item) => item.tool === "place_confirmed_order");
+    expect(res.getStatus()).to.equal(200);
+    expect(result.status).to.equal("success");
+    expect(result.message).to.include("Order confirmed");
+  });
+}

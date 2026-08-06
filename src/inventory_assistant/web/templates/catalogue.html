@@ -6,6 +6,7 @@
     <title>Construction Material Catalogue</title>
     <link rel="stylesheet" href="{{ url_for('static', path='/styles.css') }}">
     <script src="{{ url_for('static', path='/orders.js') }}" defer></script>
+    <script src="{{ url_for('static', path='/chat.js') }}" defer></script>
   </head>
   <body>
     <header class="page-header">
@@ -50,6 +51,62 @@
       <p id="inventory-alert-status" role="status" class="visually-hidden"></p>
 
       <p class="source-note">{{ summary.notes }}</p>
+
+      <section class="chat-panel" aria-labelledby="chat-title">
+        <div class="chat-heading">
+          <div>
+            <p class="eyebrow">Gemini tool-calling demo</p>
+            <h2 id="chat-title">Inventory assistant</h2>
+          </div>
+          <span class="chat-availability {% if chat_available %}available{% endif %}">
+            {% if chat_available %}Chat available{% else %}Chat unavailable{% endif %}
+          </span>
+        </div>
+        <p class="chat-explanation">
+          Gemini interprets requests. Every factual or order outcome appears separately as a
+          verified application result.
+        </p>
+        <div id="chat-transcript" class="chat-transcript" role="log" aria-live="polite" aria-relevant="additions text">
+          {% if not chat_transcript %}
+          <p id="chat-empty" class="chat-empty">Try asking about inventory, supplier terms, or an order evaluation.</p>
+          {% endif %}
+          {% for turn in chat_transcript %}
+          <article class="chat-bubble chat-bubble-user"><h3>User</h3><p>{{ turn.user_message }}</p></article>
+          {% for result in turn.verified_results %}
+          <article class="verified-result verified-result-{{ result.status }}">
+            <p class="verified-label">Verified application result</p><h3>{{ result.title }}</h3><p>{{ result.message }}</p>
+          </article>
+          {% endfor %}
+          {% if turn.commentary %}
+          <article class="chat-bubble chat-bubble-gemini">
+            <h3>Gemini commentary <span>(non-authoritative)</span></h3><p>{{ turn.commentary }}</p>
+          </article>
+          {% elif turn.commentary_status == "omitted_unsafe" %}
+          <p class="chat-note">Gemini commentary was omitted because it did not pass factual-token validation.</p>
+          {% elif turn.commentary_status == "unavailable" %}
+          <p class="chat-note">Gemini commentary was unavailable; the verified results above remain complete.</p>
+          {% endif %}
+          {% endfor %}
+        </div>
+        <aside id="pending-orders" class="pending-orders" aria-labelledby="pending-orders-title" {% if not pending_orders %}hidden{% endif %}>
+          <h3 id="pending-orders-title">Pending chat orders</h3>
+          <ul id="pending-orders-list">
+            {% for order in pending_orders %}
+            <li><strong>{{ order.reference }}</strong>: {{ order.summary }} Expires {{ order.expires_at }}.</li>
+            {% endfor %}
+          </ul>
+        </aside>
+        <form id="chat-form" class="chat-form">
+          <label for="chat-message">Message</label>
+          <div class="chat-controls">
+            <textarea id="chat-message" name="message" rows="3" maxlength="1000" placeholder="What is the availability of W12x40 beams?" required {% if not chat_available %}disabled{% endif %}></textarea>
+            <button id="chat-submit" type="submit" {% if not chat_available %}disabled{% endif %}>Send</button>
+          </div>
+        </form>
+        <p id="chat-status" role="status" aria-live="polite">
+          {% if not chat_available %}Conversational interpretation is not configured. Catalogue and order controls remain available.{% endif %}
+        </p>
+      </section>
 
       <form class="search" method="get" action="/" role="search">
         <label for="catalogue-query">Filter materials</label>

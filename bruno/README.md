@@ -1,12 +1,14 @@
 # Bruno endpoint checks
 
-This collection exercises deterministic inventory, supplier, and two-step order endpoints plus
-the shared authentication gate. The order requests run last, store the opaque confirmation token
-as a Bruno runtime variable, confirm once, and replay the same confirmation to verify idempotency.
+This collection exercises deterministic inventory, supplier, two-step order, and Gemini chat
+endpoints plus the shared authentication gate. Deterministic order requests store the opaque
+confirmation token and verify idempotency. Chat requests rely on Bruno's cookie jar, exercise
+compound iterative tools, and store only session-local pending references for confirmation and
+cancellation.
 It contains no real credentials. The human runs and validates these requests manually; agents only
 keep the request definitions current.
 
-1. Start the application with the ignored local `bruno/.env` file:
+1. Put `GEMINI_API_KEY` in the ignored local `bruno/.env`, then start the application:
 
    ```powershell
    .\.venv\Scripts\uvicorn.exe inventory_assistant.main:app --app-dir src --env-file bruno/.env
@@ -24,5 +26,5 @@ bru run bruno --env Local
 ```
 
 Override `baseUrl` when checking a deployed environment. Pass secrets at runtime rather than
-storing them in a committed Bruno environment file. The ignored `bruno/.env` contains only local
-demo values; do not reuse them for Render or any other deployed environment.
+storing them in a committed Bruno environment file. Keep the local Gemini key and demo credentials
+only in the ignored `bruno/.env`; do not reuse the demo credential for Render or commit any secret.

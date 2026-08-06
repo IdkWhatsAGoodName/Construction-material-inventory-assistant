@@ -13,7 +13,11 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
+from inventory_assistant.agent.orchestration import ChatOrchestrator
+from inventory_assistant.agent.provider import ConversationProvider, GeminiInteractionsProvider
+from inventory_assistant.agent.sessions import SESSION_TTL_SECONDS, ChatSessionRegistry
 from inventory_assistant.api.auth import BasicAuthMiddleware
+from inventory_assistant.api.routes import CHAT_SESSION_COOKIE
 from inventory_assistant.api.routes import router as catalog_router
 from inventory_assistant.api.schemas import HealthResponse
 from inventory_assistant.application.catalog import CatalogService
@@ -29,7 +33,7 @@ WEB_ROOT = Path(__file__).resolve().parent / "web"
 TEMPLATES = Jinja2Templates(directory=WEB_ROOT / "templates")
 
 
-def create_app() -> FastAPI:
+def create_app(*, conversation_provider: ConversationProvider | None = None) -> FastAPI:
     """Build an application whose external resources load during lifespan startup."""
 
     @asynccontextmanager
@@ -46,6 +50,23 @@ def create_app() -> FastAPI:
         supplier_service = SupplierService(repository)
         confirmation_registry = ConfirmationRegistry()
         order_service = OrderService(repository, repository, confirmation_registry)
+        chat_session_registry = ChatSessionRegistry()
+        provider = conversation_provider
+        if provider is None and settings.gemini_api_key:
+            provider = GeminiInteractionsProvider(
+                api_key=settings.gemini_api_key,
+                model=settings.gemini_model,
+            )
+        chat_orchestrator = (
+            ChatOrchestrator(
+                provider=provider,
+                inventory=inventory_service,
+                suppliers=supplier_service,
+                orders=order_service,
+            )
+            if provider is not None
+            else None
+        )
 
         application.state.settings = settings
         application.state.repository = repository
@@ -54,6 +75,9 @@ def create_app() -> FastAPI:
         application.state.supplier_service = supplier_service
         application.state.confirmation_registry = confirmation_registry
         application.state.order_service = order_service
+        application.state.chat_session_registry = chat_session_registry
+        application.state.chat_orchestrator = chat_orchestrator
+        application.state.conversation_provider = provider
         application.state.ready = True
 
         summary = catalog_service.get_summary()
@@ -67,6 +91,11 @@ def create_app() -> FastAPI:
             yield
         finally:
             application.state.ready = False
+            if provider is not None:
+                try:
+                    await provider.close()
+                except Exception:
+                    LOGGER.warning("Conversation provider cleanup failed", exc_info=True)
 
     application = FastAPI(
         title="Construction Material Inventory Assistant",
@@ -91,14 +120,21 @@ def create_app() -> FastAPI:
         return HealthResponse(status="ready")
 
     @application.get("/", response_class=HTMLResponse, include_in_schema=False)
-    def catalogue_page(
+    async def catalogue_page(
         request: Request,
         q: str = Query(default="", max_length=100),
     ) -> HTMLResponse:
         service = request.app.state.catalog_service
         materials = service.find_materials(q)
         alerts = request.app.state.inventory_service.list_overallocation_alerts()
-        return TEMPLATES.TemplateResponse(
+        session, _ = request.app.state.chat_session_registry.get_or_create(
+            request.cookies.get(CHAT_SESSION_COOKIE)
+        )
+        async with session.lock:
+            session.prune_pending()
+            transcript = list(session.transcript)
+            pending_orders = [item.public() for item in session.pending_orders.values()]
+        response = TEMPLATES.TemplateResponse(
             request=request,
             name="catalogue.html",
             context={
@@ -107,8 +143,21 @@ def create_app() -> FastAPI:
                 "alerts": alerts,
                 "query": " ".join(q.split()),
                 "result_count": len(materials),
+                "chat_available": request.app.state.chat_orchestrator is not None,
+                "chat_transcript": transcript,
+                "pending_orders": pending_orders,
             },
         )
+        response.set_cookie(
+            CHAT_SESSION_COOKIE,
+            session.id,
+            max_age=SESSION_TTL_SECONDS,
+            httponly=True,
+            secure=request.app.state.settings.chat_cookie_secure,
+            samesite="lax",
+            path="/",
+        )
+        return response
 
     @application.get("/openapi.json", include_in_schema=False)
     def openapi_schema() -> JSONResponse:

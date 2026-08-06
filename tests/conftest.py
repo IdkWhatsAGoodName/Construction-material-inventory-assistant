@@ -20,6 +20,9 @@ def configured_environment(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> N
     monkeypatch.setenv("DEMO_PASSWORD", PASSWORD)
     monkeypatch.setenv("INVENTORY_DATA_PATH", str(SOURCE_DATA))
     monkeypatch.setenv("INVENTORY_DB_PATH", str(tmp_path / "inventory.sqlite3"))
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+    monkeypatch.delenv("GEMINI_MODEL", raising=False)
+    monkeypatch.delenv("CHAT_COOKIE_SECURE", raising=False)
 
 
 @pytest.fixture

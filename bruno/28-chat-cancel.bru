@@ -1,0 +1,30 @@
+meta {
+  name: Chat - Cancel Pending Order
+  type: http
+  seq: 28
+}
+
+post {
+  url: {{baseUrl}}/api/chat
+  body: json
+  auth: basic
+}
+
+auth:basic {
+  username: {{demoUsername}}
+  password: {{demoPassword}}
+}
+
+body:json {
+  { "message": "Cancel pending order {{chatCancelReference}}." }
+}
+
+tests {
+  test("cancels without reserving inventory", function () {
+    const body = res.getBody();
+    const result = body.verified_results.find((item) => item.tool === "cancel_pending_order");
+    expect(res.getStatus()).to.equal(200);
+    expect(result.status).to.equal("success");
+    expect(result.message).to.include("No inventory was reserved");
+  });
+}

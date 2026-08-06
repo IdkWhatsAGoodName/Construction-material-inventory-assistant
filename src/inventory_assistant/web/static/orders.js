@@ -199,3 +199,6 @@ function titleCase(value) {
     .replaceAll("_", " ")
     .replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
+
+window.refreshInventoryAlerts = refreshInventoryAlerts;
+window.updateMaterialRow = updateMaterialRow;

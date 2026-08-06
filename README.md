@@ -6,7 +6,7 @@ steelthreads.
 
 ## Current implementation
 
-Steelthreads 1 through 4 provide a FastAPI web application that:
+Steelthreads 1 through 5 provide a FastAPI web application that:
 
 - validates the supplied synthetic JSON and atomically rebuilds a SQLite snapshot at process
   startup;
@@ -21,13 +21,16 @@ Steelthreads 1 through 4 provide a FastAPI web application that:
   before reserving inventory;
 - renders all inventory, supplier, and order facts through deterministic application services
   shared by the HTTP and browser layers;
+- embeds an optional Gemini chat interface that iteratively chooses typed tools while displaying
+  every authoritative outcome in a separate verified application result box;
+- keeps conversational sessions, transcripts, and multiple pending chat orders isolated through
+  an opaque HttpOnly cookie for 30 minutes of inactivity;
 - protects every non-health route with one shared HTTP Basic credential; and
 - provides public liveness and readiness endpoints for Render.
 
 The application preserves raw `qty_available = qty_on_hand - qty_reserved`, including negative
 values. It separately reports `qty_shippable = max(qty_available, 0)` and never describes negative
 stock as shippable. Placing an order increases `qty_reserved` without changing `qty_on_hand`.
-Conversational interpretation remains a later steelthread.
 
 The SQLite schema normalizes snapshot metadata, suppliers, and materials; enables foreign-key
 checks; uses [`STRICT` tables](https://www.sqlite.org/stricttables.html); and stores CAD prices as
@@ -53,6 +56,22 @@ tax, discount, shipment, or durable idempotency key in this demo. See the offici
 for Python [`secrets`](https://docs.python.org/3/library/secrets.html) and
 [SQLite transactions](https://sqlite.org/lang_transaction.html).
 
+Chat uses Google's Gemini Interactions API through an application-owned, stateless orchestration
+loop. Gemini receives only explicit function declarations, bounded recent context, session-local
+pending-order summaries, and deterministic function results. The application manually validates
+and executes every call; Gemini has no database, repository, arbitrary HTTP, or raw confirmation
+token access. Independent calls may be returned together, while dependent calls wait for prior
+results. A turn is bounded to five routing interactions and ten proposed application calls.
+Orders evaluated during a turn cannot be confirmed until a later explicit-confirmation turn.
+
+After successful orchestration, Gemini may add a separately labelled, non-authoritative comment.
+The verified result boxes remain controlling, and commentary is omitted unless all number,
+currency, date/time, and SKU-like tokens already occur in the verified results. Gemini requests
+use `store=false`, so no provider-hosted conversation history is used. The free Gemini API tier
+currently permits Google to use submitted content to improve its products; use only this synthetic
+demo data and review Google's current [Gemini pricing and data-use terms](https://ai.google.dev/gemini-api/docs/pricing)
+before supplying a key.
+
 ## Run locally
 
 Python 3.13 is required. From PowerShell:
@@ -62,13 +81,20 @@ python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements-dev.txt
 $env:DEMO_USERNAME = "demo"
 $env:DEMO_PASSWORD = "choose-a-long-random-password"
+$env:GEMINI_API_KEY = "your-gemini-api-key" # Optional; omit to run deterministic features only
 .\.venv\Scripts\uvicorn.exe inventory_assistant.main:app --app-dir src --reload
 ```
+
+The committed [`.env.example`](.env.example) lists all settings without real secrets. Copy values
+into your shell or an ignored `.env`; never place a real Gemini key or demo password in a tracked
+file.
 
 Then open `http://127.0.0.1:8000/` and enter the configured credential. Do not commit local
 credentials. `INVENTORY_DATA_PATH` can override the default
 `Requirements/inventory_data.json` source and `INVENTORY_DB_PATH` can override the default
 `var/inventory.sqlite3` destination. Relative paths resolve from the project root.
+`GEMINI_MODEL` defaults to `gemini-3.6-flash`. `CHAT_COOKIE_SECURE` defaults to false for local
+HTTP and is set to true by the Render Blueprint.
 
 To build the same snapshot without starting the web application or requiring demo credentials:
 
@@ -89,7 +115,7 @@ Run the verification suite with:
 ```
 
 The [`bruno`](bruno) collection provides human-run HTTP checks for the protected endpoints,
-authentication gate, order rejection, confirmation, and replay behavior. Its environment reads
+authentication gate, deterministic ordering, and iterative chat behavior. Its environment reads
 `DEMO_USERNAME` and `DEMO_PASSWORD` from the Bruno process, so no real credential is stored in the
 collection. Run these against local with the Bruno app or CLI.
 
@@ -112,22 +138,26 @@ All other routes require HTTP Basic authentication:
 - `GET /api/suppliers/{supplier_id}` — exact case-insensitive supplier lookup
 - `POST /api/orders/evaluate` — read-only deterministic quote or rejection
 - `POST /api/orders/confirm` — explicit, idempotent session-lifetime reservation confirmation
+- `POST /api/chat` — bounded iterative tool orchestration with structured verified results
 - `GET /openapi.json`, `GET /docs`, and `GET /redoc` — API contract and interactive docs
 
-These application APIs serve the protected browser and operators. A future LLM will not receive
-arbitrary HTTP or dataset access; it will be restricted to explicit function declarations backed
-by the same deterministic application services.
+These application APIs serve the protected browser and operators. Gemini does not receive
+arbitrary API or dataset access; its explicit function declarations invoke the same deterministic
+application services in-process.
 
 ## Deployment
 
 The root `render.yaml` defines one free native-Python Render web service at
 `https://sidian-inventory-assistant-demo.onrender.com`. Render waits for the GitHub Actions checks
 to pass before automatically deploying updates from `main`. `DEMO_USERNAME` and `DEMO_PASSWORD`
-are Render secrets declared with `sync: false`; no secret values belong in the repository.
+and `GEMINI_API_KEY` are Render secrets declared with `sync: false`; no secret values belong in the
+repository. The application remains ready and deterministic features remain usable if the Gemini
+key is absent or the provider is unavailable.
 
 Render's free service filesystem and process lifetime are ephemeral. Every application process
 start rebuilds `var/inventory.sqlite3` from the committed source JSON before readiness. SQLite
-reservations, pending confirmation tokens, and cached terminal results therefore intentionally
-reset on spin-down, restart, or redeploy. The in-memory confirmation registry also assumes the
+reservations, pending confirmation tokens, chat sessions, transcripts, and cached terminal results
+therefore intentionally reset on spin-down, restart, or redeploy. Chat sessions also expire after
+30 minutes of inactivity. The in-memory confirmation registry assumes the
 single Uvicorn process configured in `render.yaml`; multiple workers would not share tokens. This
 session-lifetime behavior is suitable for the demo, not durable order storage.

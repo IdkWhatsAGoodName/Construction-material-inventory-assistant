@@ -173,3 +173,38 @@ class OrderConfirmationResponse(ApiModel):
     line_total: Decimal
     currency: str
     item: MaterialResponse | None
+
+
+class ChatRequest(ApiModel):
+    message: str = Field(strict=True, min_length=1, max_length=1_000)
+
+    @field_validator("message")
+    @classmethod
+    def normalize_message(cls, value: str) -> str:
+        cleaned = " ".join(value.split())
+        if not cleaned:
+            raise ValueError("message must contain non-whitespace characters")
+        return cleaned
+
+
+class ChatVerifiedResultResponse(ApiModel):
+    call_index: int
+    tool: str
+    status: Literal["success", "rejected", "invalid", "skipped", "error", "limit"]
+    title: str
+    message: str
+    affected_skus: list[str]
+
+
+class PendingOrderSummaryResponse(ApiModel):
+    reference: str
+    summary: str
+    expires_at: datetime
+
+
+class ChatResponse(ApiModel):
+    orchestration_status: Literal["complete", "incomplete"]
+    verified_results: list[ChatVerifiedResultResponse]
+    commentary: str | None
+    commentary_status: Literal["available", "unavailable", "omitted_unsafe", "not_requested"]
+    pending_orders: list[PendingOrderSummaryResponse]

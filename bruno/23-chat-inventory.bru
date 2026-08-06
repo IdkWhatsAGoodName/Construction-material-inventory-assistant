@@ -1,0 +1,30 @@
+meta {
+  name: Chat - Inventory
+  type: http
+  seq: 23
+}
+
+post {
+  url: {{baseUrl}}/api/chat
+  body: json
+  auth: basic
+}
+
+auth:basic {
+  username: {{demoUsername}}
+  password: {{demoPassword}}
+}
+
+body:json {
+  { "message": "What is the availability of W12x40 beams, and which warehouse are they in?" }
+}
+
+tests {
+  test("shows authoritative over-allocation details", function () {
+    const body = res.getBody();
+    expect(res.getStatus()).to.equal(200);
+    expect(body.verified_results[0].tool).to.equal("query_inventory");
+    expect(body.verified_results[0].message).to.include("over-allocated by 2 each");
+    expect(body.verified_results[0].message).to.include("YARD-1");
+  });
+}

@@ -163,6 +163,22 @@ def test_confirmation_reserves_and_replay_returns_exact_cached_result(
     assert len(reservations.requests) == 1
 
 
+def test_cancellation_invalidates_pending_token_without_reserving(
+    repository: JsonInventoryRepository,
+) -> None:
+    service, reservations = build_service(repository)
+    evaluation = service.evaluate("RBR-15M-400W", 10)
+
+    cancellation = service.cancel(evaluation.confirmation_token or "")
+
+    assert cancellation.sku == "RBR-15M-400W"
+    assert cancellation.requested_quantity == 10
+    assert "No inventory was reserved" in cancellation.message
+    assert reservations.requests == []
+    with pytest.raises(ConfirmationNotFound):
+        service.confirm(evaluation.confirmation_token or "")
+
+
 def test_stale_confirmation_is_terminal_and_does_not_claim_success(
     repository: JsonInventoryRepository,
 ) -> None:

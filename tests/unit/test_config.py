@@ -45,3 +45,26 @@ def test_relative_inventory_path_is_resolved_from_project_root(
     assert settings.inventory_db_path == (PROJECT_ROOT / "var/test.sqlite3").resolve()
     assert isinstance(settings.inventory_data_path, Path)
     assert isinstance(settings.inventory_db_path, Path)
+
+
+def test_optional_gemini_settings_and_cookie_security(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("DEMO_USERNAME", "user")
+    monkeypatch.setenv("DEMO_PASSWORD", "password")
+    monkeypatch.setenv("GEMINI_API_KEY", "test-key")
+    monkeypatch.setenv("GEMINI_MODEL", "test-model")
+    monkeypatch.setenv("CHAT_COOKIE_SECURE", "yes")
+
+    settings = Settings.from_environment()
+
+    assert settings.gemini_api_key == "test-key"
+    assert settings.gemini_model == "test-model"
+    assert settings.chat_cookie_secure is True
+
+
+def test_invalid_cookie_security_setting_is_rejected(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("DEMO_USERNAME", "user")
+    monkeypatch.setenv("DEMO_PASSWORD", "password")
+    monkeypatch.setenv("CHAT_COOKIE_SECURE", "sometimes")
+
+    with pytest.raises(ConfigurationError, match="CHAT_COOKIE_SECURE"):
+        Settings.from_environment()

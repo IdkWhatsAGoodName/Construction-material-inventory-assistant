@@ -7,8 +7,15 @@ import logging
 from fastapi import APIRouter, HTTPException, Query, Request, Response
 from fastapi.responses import JSONResponse
 
+from inventory_assistant.agent.orchestration import (
+    ChatProviderMalformed,
+    ChatProviderUnavailable,
+)
+from inventory_assistant.agent.sessions import SESSION_TTL_SECONDS
 from inventory_assistant.api.schemas import (
     CatalogSummaryResponse,
+    ChatRequest,
+    ChatResponse,
     InventoryAlertResponse,
     InventoryAlertsResponse,
     InventoryDetailResponse,
@@ -38,6 +45,7 @@ from inventory_assistant.domain.inventory import render_inventory_message
 
 router = APIRouter()
 LOGGER = logging.getLogger(__name__)
+CHAT_SESSION_COOKIE = "sidian_chat_session"
 
 
 def get_catalog_service(request: Request) -> CatalogService:
@@ -54,6 +62,82 @@ def get_supplier_service(request: Request) -> SupplierService:
 
 def get_order_service(request: Request) -> OrderService:
     return request.app.state.order_service
+
+
+@router.post(
+    "/api/chat",
+    response_model=ChatResponse,
+    responses={502: {"description": "Malformed provider response"}, 503: {}},
+    tags=["chat"],
+)
+async def chat(request: Request, payload: ChatRequest) -> JSONResponse:
+    orchestrator = request.app.state.chat_orchestrator
+    if orchestrator is None:
+        return JSONResponse(
+            status_code=503,
+            content={
+                "detail": {
+                    "code": "chat_unavailable",
+                    "message": (
+                        "Conversational interpretation is not configured. The catalogue and "
+                        "deterministic order controls remain available."
+                    ),
+                }
+            },
+            headers={"Cache-Control": "no-store"},
+        )
+
+    registry = request.app.state.chat_session_registry
+    session, _ = registry.get_or_create(request.cookies.get(CHAT_SESSION_COOKIE))
+    try:
+        outcome = await orchestrator.handle(session, payload.message)
+    except ChatProviderUnavailable:
+        response = JSONResponse(
+            status_code=503,
+            content={
+                "detail": {
+                    "code": "chat_provider_unavailable",
+                    "message": (
+                        "Gemini is temporarily unavailable. No tool calls were executed; "
+                        "deterministic features remain available."
+                    ),
+                }
+            },
+            headers={"Cache-Control": "no-store"},
+        )
+    except ChatProviderMalformed:
+        response = JSONResponse(
+            status_code=502,
+            content={
+                "detail": {
+                    "code": "chat_provider_response_invalid",
+                    "message": (
+                        "Gemini did not return a usable function call. No tool calls were executed."
+                    ),
+                }
+            },
+            headers={"Cache-Control": "no-store"},
+        )
+    else:
+        response = JSONResponse(
+            status_code=200,
+            content=outcome.public(),
+            headers={"Cache-Control": "no-store"},
+        )
+    _set_chat_cookie(response, request, session.id)
+    return response
+
+
+def _set_chat_cookie(response: Response, request: Request, session_id: str) -> None:
+    response.set_cookie(
+        CHAT_SESSION_COOKIE,
+        session_id,
+        max_age=SESSION_TTL_SECONDS,
+        httponly=True,
+        secure=request.app.state.settings.chat_cookie_secure,
+        samesite="lax",
+        path="/",
+    )
 
 
 @router.get("/api/catalog/summary", response_model=CatalogSummaryResponse, tags=["catalog"])

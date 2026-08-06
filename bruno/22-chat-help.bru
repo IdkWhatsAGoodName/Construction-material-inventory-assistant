@@ -1,0 +1,30 @@
+meta {
+  name: Chat - Help
+  type: http
+  seq: 22
+}
+
+post {
+  url: {{baseUrl}}/api/chat
+  body: json
+  auth: basic
+}
+
+auth:basic {
+  username: {{demoUsername}}
+  password: {{demoPassword}}
+}
+
+body:json {
+  { "message": "Hello, what can you help me with?" }
+}
+
+tests {
+  test("returns a verified help result and separate commentary status", function () {
+    const body = res.getBody();
+    expect(res.getStatus()).to.equal(200);
+    expect(body.orchestration_status).to.equal("complete");
+    expect(body.verified_results[0].tool).to.equal("show_help");
+    expect(body).to.have.property("commentary_status");
+  });
+}

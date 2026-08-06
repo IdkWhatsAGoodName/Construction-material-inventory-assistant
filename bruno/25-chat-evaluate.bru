@@ -1,0 +1,34 @@
+meta {
+  name: Chat - Evaluate Confirmable Order
+  type: http
+  seq: 25
+}
+
+post {
+  url: {{baseUrl}}/api/chat
+  body: json
+  auth: basic
+}
+
+auth:basic {
+  username: {{demoUsername}}
+  password: {{demoPassword}}
+}
+
+body:json {
+  { "message": "Evaluate an order for 1 length of RBR-15M-400W, but do not confirm it." }
+}
+
+script:post-response {
+  const body = res.getBody();
+  bru.setVar("chatPendingReference", body.pending_orders[0].reference);
+}
+
+tests {
+  test("creates a session-local pending order", function () {
+    const body = res.getBody();
+    expect(res.getStatus()).to.equal(200);
+    expect(body.verified_results[0].tool).to.equal("evaluate_order");
+    expect(body.pending_orders.length).to.be.greaterThan(0);
+  });
+}
