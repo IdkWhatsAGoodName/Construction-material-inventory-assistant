@@ -23,7 +23,7 @@
 
 Build the construction material inventory assistant specified in `Requirements/README.md`. The delivered program must ingest the supplied synthetic JSON, expose deterministic inventory and ordering behavior, provide a conversational web interface, and be deployable at a public URL. Every number shown to a user must originate from application code operating on the source data/database, never from model-generated knowledge.
 
-Current status: steelthreads 1 and 2 are complete and deployed at `https://sidian-inventory-assistant-demo.onrender.com`. Steelthread 2 commit `e1de56d` passed CI, local automated verification, public smoke checks, and the human's protected Bruno/browser verification. Steelthread 3 SQLite ingestion is implemented locally with 96 passing tests and clean Ruff checks; human review, commit/push, CI, protected request verification, and deployment verification remain. Python 3.13, Git, GitHub CLI, Render CLI, the curated GitHub and Render Codex plugins, and Render MCP are installed and verified. Use authenticated GitHub CLI for programmatic GitHub operations: the human explicitly waived the GitHub App connector check after Codex CLI's connector-directory request was blocked by a Cloudflare challenge even though Codex Doctor and GitHub CLI authentication passed.
+Current status: steelthreads 1 through 3 are complete and deployed at `https://sidian-inventory-assistant-demo.onrender.com`. Steelthread 3 commit `3fff68a` passed 96 local tests, Ruff checks, GitHub Actions CI run `31088132893`, the public liveness/readiness and authentication-boundary smoke checks, and the human's local database-reset and protected remote verification. Python 3.13, Git, GitHub CLI, Render CLI, the curated GitHub and Render Codex plugins, and Render MCP are installed and verified. Use authenticated GitHub CLI for programmatic GitHub operations: the human explicitly waived the GitHub App connector check after Codex CLI's connector-directory request was blocked by a Cloudflare challenge even though Codex Doctor and GitHub CLI authentication passed.
 
 ## Agreed demo design
 
@@ -106,8 +106,8 @@ Each numbered step is independently runnable and is completed only when its stat
    - Distinguish exact matches, no matches, and ambiguous matches; never silently substitute a near match.
    - Verify the read-only portions of all required prompts plus over-allocated, fully reserved, discontinued, zero-stock, and unknown-SKU cases; verify that the warning appears while a discrepancy exists and is absent when none exists.
 
-3. **Repeatable SQLite ingestion — implemented locally; deployment pending**
-   - Status: the runtime and offline CLI use the same atomic ingestion operation; 96 tests and Ruff checks pass. Human review, source-control actions, CI, protected request verification, and deployed reset/readiness smoke tests remain.
+3. **Repeatable SQLite ingestion — complete**
+   - Status: commit `3fff68a` passed 96 local tests, Ruff checks, GitHub Actions CI run `31088132893`, public deployed smoke checks, and the human's local database-reset and protected remote verification.
    - Add normalized supplier and material tables, constraints, indexes, and an ingestion record containing source metadata.
    - Build and validate a fresh SQLite file at every process start, atomically replace the previous session file only after success, and reuse the same operation from `scripts/ingest.py`.
    - Switch the application to the SQLite repository without changing observable read behavior; do not add an upsert path, runtime ingestion endpoint, or demo migration framework.
