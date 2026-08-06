@@ -139,6 +139,78 @@ button {
   font: inherit;
 }
 
+button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.button-secondary {
+  border-color: #627068;
+  color: #274233;
+  background: #fff;
+}
+
+.order-panel {
+  margin-block: 1.25rem;
+  padding: 1.25rem;
+  border: 2px solid #4d7359;
+  border-radius: 0.75rem;
+  background: #f7fbf7;
+}
+
+.order-panel-heading {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.order-panel h2,
+.order-result h3 {
+  margin: 0;
+}
+
+.order-fields {
+  display: grid;
+  grid-template-columns: minmax(14rem, 2fr) minmax(7rem, 0.6fr) auto;
+  align-items: end;
+  gap: 0.75rem;
+}
+
+.order-fields label {
+  display: block;
+  margin-bottom: 0.35rem;
+  font-weight: 700;
+}
+
+.order-fields input {
+  width: 100%;
+}
+
+.order-result {
+  margin-top: 1rem;
+  padding: 1rem;
+  border-left: 4px solid #4d7359;
+  background: #fff;
+}
+
+.order-expiry {
+  color: #5e6962;
+  font-size: 0.9rem;
+}
+
+#order-status {
+  min-height: 1.5rem;
+  margin-bottom: 0;
+  font-weight: 700;
+}
+
+.order-row-action {
+  min-height: 2.25rem;
+  padding-inline: 0.75rem;
+  white-space: nowrap;
+}
+
 input {
   width: min(42rem, 100%);
   padding-inline: 0.8rem;
@@ -288,5 +360,9 @@ tr:target > * {
 
   .search-controls {
     flex-wrap: wrap;
+  }
+
+  .order-fields {
+    grid-template-columns: 1fr;
   }
 }

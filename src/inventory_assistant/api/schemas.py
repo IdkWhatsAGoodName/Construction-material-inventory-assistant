@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class ApiModel(BaseModel):
@@ -119,3 +119,57 @@ class SupplierSearchResponse(ApiModel):
     message: str
     supplier: SupplierResponse | None = None
     candidates: list[SupplierResponse]
+
+
+class OrderEvaluationRequest(ApiModel):
+    material_query: str = Field(min_length=1, max_length=100)
+    quantity: int = Field(strict=True, gt=0)
+
+    @field_validator("material_query")
+    @classmethod
+    def normalize_material_query(cls, value: str) -> str:
+        cleaned = " ".join(value.split())
+        if not cleaned:
+            raise ValueError("material_query must contain non-whitespace characters")
+        return cleaned
+
+
+class OrderEvaluationResponse(ApiModel):
+    outcome: Literal[
+        "ready_for_confirmation",
+        "insufficient_inventory",
+        "discontinued",
+        "ambiguous",
+        "no_match",
+    ]
+    query: str
+    requested_quantity: int
+    message: str
+    item: MaterialResponse | None = None
+    candidates: list[MaterialCandidateResponse]
+    unit_price: Decimal | None = None
+    line_total: Decimal | None = None
+    currency: str | None = None
+    confirmation_token: str | None = None
+    expires_at: datetime | None = None
+
+
+class OrderConfirmationRequest(ApiModel):
+    confirmation_token: str = Field(strict=True, min_length=20, max_length=200)
+
+    @field_validator("confirmation_token")
+    @classmethod
+    def reject_surrounding_whitespace(cls, value: str) -> str:
+        if value != value.strip():
+            raise ValueError("confirmation_token must not contain surrounding whitespace")
+        return value
+
+
+class OrderConfirmationResponse(ApiModel):
+    outcome: Literal["confirmed", "stale"]
+    message: str
+    requested_quantity: int
+    unit_price: Decimal
+    line_total: Decimal
+    currency: str
+    item: MaterialResponse | None

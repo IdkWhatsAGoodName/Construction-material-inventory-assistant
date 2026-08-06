@@ -35,6 +35,7 @@ def test_public_health_checks_do_not_require_authentication(client: TestClient) 
         "/docs",
         "/redoc",
         "/static/styles.css",
+        "/static/orders.js",
         "/not-a-route",
     ],
 )
@@ -89,6 +90,7 @@ def test_authorized_catalogue_and_documentation_are_available(
     assert client.get("/docs", auth=auth).status_code == 200
     assert client.get("/redoc", auth=auth).status_code == 200
     assert client.get("/static/styles.css", auth=auth).status_code == 200
+    assert client.get("/static/orders.js", auth=auth).status_code == 200
     assert client.get("/not-a-route", auth=auth).status_code == 404
 
 
@@ -158,6 +160,9 @@ def test_catalogue_page_displays_counts_and_empty_state(
     assert 'href="/?q=STL-W12X40-A992#material-STL-W12X40-A992"' in page.text
     assert "Raw availability" in page.text
     assert "Can ship" in page.text
+    assert page.text.count('class="order-row-action button-secondary"') == 77
+    assert 'id="order-panel"' in page.text
+    assert "This unconfirmed quote expires" not in page.text
 
     empty_page = client.get("/", params={"q": "definitely-not-a-real-sku"}, auth=auth)
     assert "No matching materials" in empty_page.text

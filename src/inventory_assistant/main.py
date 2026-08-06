@@ -18,6 +18,7 @@ from inventory_assistant.api.routes import router as catalog_router
 from inventory_assistant.api.schemas import HealthResponse
 from inventory_assistant.application.catalog import CatalogService
 from inventory_assistant.application.inventory import InventoryService
+from inventory_assistant.application.orders import ConfirmationRegistry, OrderService
 from inventory_assistant.application.suppliers import SupplierService
 from inventory_assistant.config import Settings
 from inventory_assistant.data.ingestion import ingest_inventory
@@ -43,12 +44,16 @@ def create_app() -> FastAPI:
         catalog_service = CatalogService(repository)
         inventory_service = InventoryService(repository)
         supplier_service = SupplierService(repository)
+        confirmation_registry = ConfirmationRegistry()
+        order_service = OrderService(repository, repository, confirmation_registry)
 
         application.state.settings = settings
         application.state.repository = repository
         application.state.catalog_service = catalog_service
         application.state.inventory_service = inventory_service
         application.state.supplier_service = supplier_service
+        application.state.confirmation_registry = confirmation_registry
+        application.state.order_service = order_service
         application.state.ready = True
 
         summary = catalog_service.get_summary()

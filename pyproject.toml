@@ -26,7 +26,7 @@ dev = [
 where = ["src"]
 
 [tool.setuptools.package-data]
-inventory_assistant = ["web/templates/*.html", "web/static/*.css"]
+inventory_assistant = ["web/templates/*.html", "web/static/*.css", "web/static/*.js"]
 
 [tool.pytest.ini_options]
 addopts = "-ra"

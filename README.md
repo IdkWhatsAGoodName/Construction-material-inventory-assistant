@@ -6,7 +6,7 @@ steelthreads.
 
 ## Current implementation
 
-Steelthreads 1 through 3 provide a read-only FastAPI web application that:
+Steelthreads 1 through 4 provide a FastAPI web application that:
 
 - validates the supplied synthetic JSON and atomically rebuilds a SQLite snapshot at process
   startup;
@@ -14,16 +14,20 @@ Steelthreads 1 through 3 provide a read-only FastAPI web application that:
   ordered inventory conditions;
 - conservatively matches normalized catalogue tokens while reporting exact, unique, ambiguous,
   and no-match outcomes without fuzzy substitution;
-- exposes protected catalogue, inventory, supplier, and discrepancy APIs plus API documentation;
+- exposes protected catalogue, inventory, supplier, discrepancy, and two-step order APIs plus API
+  documentation;
 - keeps the known over-allocation visible in a linked, non-modal warning banner;
-- renders all inventory and supplier facts through deterministic application services shared by
-  the HTTP and browser layers;
+- evaluates customer orders, calculates decimal-safe totals, and requires explicit confirmation
+  before reserving inventory;
+- renders all inventory, supplier, and order facts through deterministic application services
+  shared by the HTTP and browser layers;
 - protects every non-health route with one shared HTTP Basic credential; and
 - provides public liveness and readiness endpoints for Render.
 
 The application preserves raw `qty_available = qty_on_hand - qty_reserved`, including negative
 values. It separately reports `qty_shippable = max(qty_available, 0)` and never describes negative
-stock as shippable. Order mutations and conversational interpretation remain later steelthreads.
+stock as shippable. Placing an order increases `qty_reserved` without changing `qty_on_hand`.
+Conversational interpretation remains a later steelthread.
 
 The SQLite schema normalizes snapshot metadata, suppliers, and materials; enables foreign-key
 checks; uses [`STRICT` tables](https://www.sqlite.org/stricttables.html); and stores CAD prices as
@@ -37,6 +41,17 @@ Matching uses Unicode NFKC normalization, case folding, punctuation/separator no
 a small alias set for common units and catalogue plurals. Exact normalized SKUs and full
 descriptions win; otherwise every meaningful query token must occur in the SKU, description,
 category, grade, or unit. The matcher does not rank, fuzz, or silently choose a near match.
+
+Orders use an evaluate-then-confirm workflow. Evaluation is read-only, rejects discontinued or
+insufficient stock without partial fulfilment, and may show a clearly labelled hypothetical total
+for a rejected request. A valid evaluation creates an opaque, 15-minute process-memory
+confirmation token bound to the exact SKU, quantity, price, on-hand quantity, reserved quantity,
+and discontinued state. Confirmation revalidates that state in a SQLite `BEGIN IMMEDIATE`
+transaction before increasing `qty_reserved`. Sequential or concurrent replay of a consumed token
+returns its cached terminal result without reserving twice. There is no first-class order record,
+tax, discount, shipment, or durable idempotency key in this demo. See the official documentation
+for Python [`secrets`](https://docs.python.org/3/library/secrets.html) and
+[SQLite transactions](https://sqlite.org/lang_transaction.html).
 
 ## Run locally
 
@@ -73,9 +88,12 @@ Run the verification suite with:
 .\.venv\Scripts\pytest.exe
 ```
 
-The [`bruno`](bruno) collection provides human-run HTTP checks for the protected endpoints and authentication gate. Its environment reads `DEMO_USERNAME` and `DEMO_PASSWORD` from the Bruno process, so no real credential is stored in the collection. Run these against local with the Bruno app or CLI.
+The [`bruno`](bruno) collection provides human-run HTTP checks for the protected endpoints,
+authentication gate, order rejection, confirmation, and replay behavior. Its environment reads
+`DEMO_USERNAME` and `DEMO_PASSWORD` from the Bruno process, so no real credential is stored in the
+collection. Run these against local with the Bruno app or CLI.
 
-## Read-only routes
+## Routes
 
 The following health routes are intentionally public:
 
@@ -92,6 +110,8 @@ All other routes require HTTP Basic authentication:
 - `GET /api/inventory/alerts` — current over-allocation discrepancies
 - `GET /api/suppliers?category=` — supplier resolution for a material category
 - `GET /api/suppliers/{supplier_id}` — exact case-insensitive supplier lookup
+- `POST /api/orders/evaluate` — read-only deterministic quote or rejection
+- `POST /api/orders/confirm` — explicit, idempotent session-lifetime reservation confirmation
 - `GET /openapi.json`, `GET /docs`, and `GET /redoc` — API contract and interactive docs
 
 These application APIs serve the protected browser and operators. A future LLM will not receive
@@ -106,6 +126,8 @@ to pass before automatically deploying updates from `main`. `DEMO_USERNAME` and 
 are Render secrets declared with `sync: false`; no secret values belong in the repository.
 
 Render's free service filesystem and process lifetime are ephemeral. Every application process
-start rebuilds `var/inventory.sqlite3` from the committed source JSON before readiness. Future
-SQLite reservation state will therefore intentionally reset on spin-down, restart, or redeploy.
-This session-lifetime behavior is suitable for the demo, not durable order storage.
+start rebuilds `var/inventory.sqlite3` from the committed source JSON before readiness. SQLite
+reservations, pending confirmation tokens, and cached terminal results therefore intentionally
+reset on spin-down, restart, or redeploy. The in-memory confirmation registry also assumes the
+single Uvicorn process configured in `render.yaml`; multiple workers would not share tokens. This
+session-lifetime behavior is suitable for the demo, not durable order storage.

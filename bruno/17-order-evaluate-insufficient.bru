@@ -1,0 +1,36 @@
+meta {
+  name: Order - Reject 500 Lengths of 15M Rebar
+  type: http
+  seq: 17
+}
+
+post {
+  url: {{baseUrl}}/api/orders/evaluate
+  body: json
+  auth: basic
+}
+
+auth:basic {
+  username: {{demoUsername}}
+  password: {{demoPassword}}
+}
+
+body:json {
+  {
+    "material_query": "15M deformed rebar",
+    "quantity": 500
+  }
+}
+
+tests {
+  test("rejects without partial fulfilment and reports hypothetical total", function () {
+    const body = res.getBody();
+
+    expect(res.getStatus()).to.equal(200);
+    expect(body.outcome).to.equal("insufficient_inventory");
+    expect(body.item.sku).to.equal("RBR-15M-400W");
+    expect(body.item.qty_shippable).to.equal(120);
+    expect(body.line_total).to.equal("13925.00");
+    expect(body.confirmation_token).to.equal(null);
+  });
+}

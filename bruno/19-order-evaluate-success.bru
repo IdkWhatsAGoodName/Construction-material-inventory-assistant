@@ -1,0 +1,41 @@
+meta {
+  name: Order - Evaluate Confirmable Rebar
+  type: http
+  seq: 19
+}
+
+post {
+  url: {{baseUrl}}/api/orders/evaluate
+  body: json
+  auth: basic
+}
+
+auth:basic {
+  username: {{demoUsername}}
+  password: {{demoPassword}}
+}
+
+body:json {
+  {
+    "material_query": "RBR-15M-400W",
+    "quantity": 1
+  }
+}
+
+script:post-response {
+  const body = res.getBody();
+  bru.setVar("orderConfirmationToken", body.confirmation_token);
+  bru.setVar("orderReservedBefore", String(body.item.qty_reserved));
+}
+
+tests {
+  test("creates a 15-minute confirmation without reserving", function () {
+    const body = res.getBody();
+
+    expect(res.getStatus()).to.equal(200);
+    expect(body.outcome).to.equal("ready_for_confirmation");
+    expect(body.confirmation_token.length).to.be.greaterThan(20);
+    expect(body.line_total).to.equal("27.85");
+    expect(body.message).to.include("no inventory has been reserved yet");
+  });
+}

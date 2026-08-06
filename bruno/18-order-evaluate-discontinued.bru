@@ -1,0 +1,35 @@
+meta {
+  name: Order - Reject Discontinued Steel Plate
+  type: http
+  seq: 18
+}
+
+post {
+  url: {{baseUrl}}/api/orders/evaluate
+  body: json
+  auth: basic
+}
+
+auth:basic {
+  username: {{demoUsername}}
+  password: {{demoPassword}}
+}
+
+body:json {
+  {
+    "material_query": "3/8 inch steel plate",
+    "quantity": 3
+  }
+}
+
+tests {
+  test("rejects discontinued stock and reports hypothetical total", function () {
+    const body = res.getBody();
+
+    expect(res.getStatus()).to.equal(200);
+    expect(body.outcome).to.equal("discontinued");
+    expect(body.item.sku).to.equal("STL-PL38-A36");
+    expect(body.line_total).to.equal("904.5");
+    expect(body.confirmation_token).to.equal(null);
+  });
+}

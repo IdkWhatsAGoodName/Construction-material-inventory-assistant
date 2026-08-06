@@ -1,0 +1,39 @@
+meta {
+  name: Order - Confirm Reservation
+  type: http
+  seq: 20
+}
+
+post {
+  url: {{baseUrl}}/api/orders/confirm
+  body: json
+  auth: basic
+}
+
+auth:basic {
+  username: {{demoUsername}}
+  password: {{demoPassword}}
+}
+
+body:json {
+  {
+    "confirmation_token": "{{orderConfirmationToken}}"
+  }
+}
+
+script:post-response {
+  const body = res.getBody();
+  bru.setVar("confirmedReservedQuantity", String(body.item.qty_reserved));
+}
+
+tests {
+  test("increments reserved by one without changing on-hand", function () {
+    const body = res.getBody();
+    const reservedBefore = Number(bru.getVar("orderReservedBefore"));
+
+    expect(res.getStatus()).to.equal(200);
+    expect(body.outcome).to.equal("confirmed");
+    expect(body.item.qty_on_hand).to.equal(120);
+    expect(body.item.qty_reserved).to.equal(reservedBefore + 1);
+  });
+}

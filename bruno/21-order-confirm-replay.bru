@@ -1,0 +1,32 @@
+meta {
+  name: Order - Replay Confirmation Safely
+  type: http
+  seq: 21
+}
+
+post {
+  url: {{baseUrl}}/api/orders/confirm
+  body: json
+  auth: basic
+}
+
+auth:basic {
+  username: {{demoUsername}}
+  password: {{demoPassword}}
+}
+
+body:json {
+  {
+    "confirmation_token": "{{orderConfirmationToken}}"
+  }
+}
+
+tests {
+  test("returns the cached result without reserving twice", function () {
+    const body = res.getBody();
+
+    expect(res.getStatus()).to.equal(200);
+    expect(body.outcome).to.equal("confirmed");
+    expect(body.item.qty_reserved).to.equal(Number(bru.getVar("confirmedReservedQuantity")));
+  });
+}

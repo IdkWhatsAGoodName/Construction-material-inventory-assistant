@@ -10,6 +10,7 @@ from decimal import Decimal
 from pathlib import Path
 
 from inventory_assistant.data.models import DatasetMeta, Definitions, Material, Supplier
+from inventory_assistant.data.repository import ReservationRequest, ReservationResult
 
 SCHEMA_VERSION = 1
 BUSY_TIMEOUT_MS = 5_000
@@ -17,6 +18,10 @@ BUSY_TIMEOUT_MS = 5_000
 
 class InventoryDatabaseError(RuntimeError):
     """Raised when a SQLite inventory snapshot cannot be read safely."""
+
+
+class ReservationPersistenceError(InventoryDatabaseError):
+    """Raised when a confirmed reservation cannot access SQLite safely."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -98,6 +103,66 @@ class SQLiteInventoryRepository:
                 (supplier_id.strip(),),
             ).fetchone()
         return _supplier_from_row(row) if row else None
+
+    def reserve_if_unchanged(self, request: ReservationRequest) -> ReservationResult:
+        """Reserve inventory only when the evaluated snapshot still matches exactly."""
+
+        try:
+            with connect_database(self._database_path, read_only=False) as connection:
+                connection.execute("BEGIN IMMEDIATE")
+                try:
+                    current = _select_material(connection, request.sku)
+                    if not _matches_expected_state(current, request):
+                        connection.execute("ROLLBACK")
+                        return ReservationResult(outcome="stale", material=current)
+
+                    qty_shippable = max(current.qty_on_hand - current.qty_reserved, 0)
+                    if (
+                        isinstance(request.quantity, bool)
+                        or request.quantity <= 0
+                        or current.discontinued
+                        or request.quantity > qty_shippable
+                    ):
+                        connection.execute("ROLLBACK")
+                        return ReservationResult(outcome="stale", material=current)
+
+                    cursor = connection.execute(
+                        """
+                        UPDATE materials
+                        SET qty_reserved = qty_reserved + ?
+                        WHERE sku = ? COLLATE NOCASE
+                          AND qty_on_hand = ?
+                          AND qty_reserved = ?
+                          AND unit_price_cents = ?
+                          AND discontinued = ?
+                        """,
+                        (
+                            request.quantity,
+                            request.sku,
+                            request.expected_qty_on_hand,
+                            request.expected_qty_reserved,
+                            int(request.expected_unit_price * Decimal(100)),
+                            int(request.expected_discontinued),
+                        ),
+                    )
+                    if cursor.rowcount != 1:
+                        connection.execute("ROLLBACK")
+                        return ReservationResult(
+                            outcome="stale",
+                            material=_select_material(connection, request.sku),
+                        )
+
+                    updated = _select_material(connection, request.sku)
+                    connection.execute("COMMIT")
+                    return ReservationResult(outcome="reserved", material=updated)
+                except Exception:
+                    if connection.in_transaction:
+                        connection.execute("ROLLBACK")
+                    raise
+        except ReservationPersistenceError:
+            raise
+        except (sqlite3.Error, InventoryDatabaseError) as error:
+            raise ReservationPersistenceError("Unable to reserve inventory") from error
 
     def _validate_snapshot(self) -> None:
         if not self._database_path.is_file():
@@ -204,4 +269,26 @@ def _material_from_row(row: sqlite3.Row) -> Material:
         primary_supplier_id=row["primary_supplier_id"],
         warehouse=row["warehouse"],
         discontinued=bool(row["discontinued"]),
+    )
+
+
+def _select_material(connection: sqlite3.Connection, sku: str) -> Material | None:
+    row = connection.execute(
+        """
+        SELECT materials.*, inventory_snapshot.currency
+        FROM materials
+        JOIN inventory_snapshot USING (snapshot_id)
+        WHERE materials.sku = ? COLLATE NOCASE
+        """,
+        (sku,),
+    ).fetchone()
+    return _material_from_row(row) if row else None
+
+
+def _matches_expected_state(material: Material | None, request: ReservationRequest) -> bool:
+    return material is not None and (
+        material.unit_price == request.expected_unit_price
+        and material.qty_on_hand == request.expected_qty_on_hand
+        and material.qty_reserved == request.expected_qty_reserved
+        and material.discontinued == request.expected_discontinued
     )

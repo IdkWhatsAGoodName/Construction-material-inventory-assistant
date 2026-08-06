@@ -1,8 +1,11 @@
-"""HTTP routes for deterministic read-only inventory behavior."""
+"""HTTP routes for deterministic inventory and order behavior."""
 
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException, Query, Request
+import logging
+
+from fastapi import APIRouter, HTTPException, Query, Request, Response
+from fastapi.responses import JSONResponse
 
 from inventory_assistant.api.schemas import (
     CatalogSummaryResponse,
@@ -13,16 +16,28 @@ from inventory_assistant.api.schemas import (
     MaterialCandidateResponse,
     MaterialListResponse,
     MaterialResponse,
+    OrderConfirmationRequest,
+    OrderConfirmationResponse,
+    OrderEvaluationRequest,
+    OrderEvaluationResponse,
     SupplierDetailResponse,
     SupplierResponse,
     SupplierSearchResponse,
 )
 from inventory_assistant.application.catalog import CatalogService
 from inventory_assistant.application.inventory import InventoryService
+from inventory_assistant.application.orders import (
+    ConfirmationNotFound,
+    OrderConfirmation,
+    OrderEvaluation,
+    OrderService,
+)
 from inventory_assistant.application.suppliers import SupplierService, render_supplier_message
+from inventory_assistant.data.sqlite_repository import ReservationPersistenceError
 from inventory_assistant.domain.inventory import render_inventory_message
 
 router = APIRouter()
+LOGGER = logging.getLogger(__name__)
 
 
 def get_catalog_service(request: Request) -> CatalogService:
@@ -35,6 +50,10 @@ def get_inventory_service(request: Request) -> InventoryService:
 
 def get_supplier_service(request: Request) -> SupplierService:
     return request.app.state.supplier_service
+
+
+def get_order_service(request: Request) -> OrderService:
+    return request.app.state.order_service
 
 
 @router.get("/api/catalog/summary", response_model=CatalogSummaryResponse, tags=["catalog"])
@@ -157,4 +176,93 @@ def supplier_by_id(request: Request, supplier_id: str) -> SupplierDetailResponse
             **SupplierResponse.model_validate(supplier).model_dump(),
             "message": render_supplier_message(supplier),
         }
+    )
+
+
+@router.post(
+    "/api/orders/evaluate",
+    response_model=OrderEvaluationResponse,
+    tags=["orders"],
+)
+def evaluate_order(
+    request: Request,
+    payload: OrderEvaluationRequest,
+    response: Response,
+) -> OrderEvaluationResponse:
+    response.headers["Cache-Control"] = "no-store"
+    result = get_order_service(request).evaluate(payload.material_query, payload.quantity)
+    return _evaluation_response(result)
+
+
+@router.post(
+    "/api/orders/confirm",
+    response_model=OrderConfirmationResponse,
+    responses={404: {"description": "Unknown or expired confirmation"}, 409: {}, 503: {}},
+    tags=["orders"],
+)
+def confirm_order(
+    request: Request,
+    payload: OrderConfirmationRequest,
+    response: Response,
+) -> OrderConfirmationResponse | JSONResponse:
+    response.headers["Cache-Control"] = "no-store"
+    try:
+        result = get_order_service(request).confirm(payload.confirmation_token)
+    except ConfirmationNotFound as error:
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "code": "confirmation_not_found",
+                "message": "The confirmation is unknown or expired. Evaluate the order again.",
+            },
+            headers={"Cache-Control": "no-store"},
+        ) from error
+    except ReservationPersistenceError:
+        LOGGER.error("Order confirmation could not access reservation persistence")
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "code": "reservation_unavailable",
+                "message": "Inventory reservation is temporarily unavailable. Try again.",
+            },
+            headers={"Cache-Control": "no-store"},
+        ) from None
+
+    model = _confirmation_response(result)
+    if result.outcome == "stale":
+        return JSONResponse(
+            status_code=409,
+            content=model.model_dump(mode="json"),
+            headers={"Cache-Control": "no-store"},
+        )
+    return model
+
+
+def _evaluation_response(result: OrderEvaluation) -> OrderEvaluationResponse:
+    return OrderEvaluationResponse(
+        outcome=result.outcome,
+        query=result.query,
+        requested_quantity=result.requested_quantity,
+        message=result.message,
+        item=MaterialResponse.model_validate(result.item) if result.item else None,
+        candidates=[
+            MaterialCandidateResponse.model_validate(candidate) for candidate in result.candidates
+        ],
+        unit_price=result.unit_price,
+        line_total=result.line_total,
+        currency=result.currency,
+        confirmation_token=result.confirmation_token,
+        expires_at=result.expires_at,
+    )
+
+
+def _confirmation_response(result: OrderConfirmation) -> OrderConfirmationResponse:
+    return OrderConfirmationResponse(
+        outcome=result.outcome,
+        message=result.message,
+        requested_quantity=result.requested_quantity,
+        unit_price=result.unit_price,
+        line_total=result.line_total,
+        currency=result.currency,
+        item=MaterialResponse.model_validate(result.item) if result.item else None,
     )

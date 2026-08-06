@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Construction Material Catalogue</title>
     <link rel="stylesheet" href="{{ url_for('static', path='/styles.css') }}">
+    <script src="{{ url_for('static', path='/orders.js') }}" defer></script>
   </head>
   <body>
     <header class="page-header">
@@ -22,15 +23,21 @@
     </header>
 
     <main>
-      {% if alerts %}
-      <section class="inventory-warning" aria-labelledby="inventory-warning-title">
-        <h2 id="inventory-warning-title">Inventory discrepancy requires attention</h2>
-        <p>
+      <section
+        id="inventory-warning"
+        class="inventory-warning"
+        aria-labelledby="inventory-warning-title"
+        {% if not alerts %}hidden{% endif %}
+      >
+        <h2 id="inventory-warning-title">{% if alerts %}Inventory discrepancy requires attention{% endif %}</h2>
+        <p id="inventory-warning-summary">
+          {% if alerts %}
           {{ alerts|length }} material{% if alerts|length != 1 %}s are{% else %} is{% endif %}
           over-allocated. Zero units can ship for each affected material until inventory is corrected.
           This demo has no correction workflow.
+          {% endif %}
         </p>
-        <ul>
+        <ul id="inventory-warning-items">
           {% for alert in alerts %}
           <li>
             <a href="/?q={{ alert.sku|urlencode }}#material-{{ alert.sku }}">{{ alert.sku }}</a>:
@@ -40,7 +47,7 @@
           {% endfor %}
         </ul>
       </section>
-      {% endif %}
+      <p id="inventory-alert-status" role="status" class="visually-hidden"></p>
 
       <p class="source-note">{{ summary.notes }}</p>
 
@@ -65,6 +72,37 @@
         {% if query %}for &ldquo;{{ query }}&rdquo;{% endif %}.
       </p>
 
+      <section id="order-panel" class="order-panel" aria-labelledby="order-panel-title" hidden>
+        <div class="order-panel-heading">
+          <div>
+            <p class="eyebrow">Customer order</p>
+            <h2 id="order-panel-title">Evaluate an order</h2>
+          </div>
+          <button id="order-cancel" class="button-secondary" type="button">Cancel</button>
+        </div>
+        <p id="order-material-description"></p>
+        <form id="order-evaluation-form">
+          <div class="order-fields">
+            <div>
+              <label for="order-sku">SKU</label>
+              <input id="order-sku" name="material_query" type="text" readonly>
+            </div>
+            <div>
+              <label for="order-quantity">Quantity</label>
+              <input id="order-quantity" name="quantity" type="number" min="1" step="1" required>
+            </div>
+            <button id="order-evaluate" type="submit">Evaluate order</button>
+          </div>
+        </form>
+        <div id="order-result" class="order-result" tabindex="-1" hidden>
+          <h3>Evaluation result</h3>
+          <p id="order-result-message"></p>
+          <p id="order-expiry" class="order-expiry" hidden></p>
+          <button id="order-confirm" type="button" hidden>Confirm reservation</button>
+        </div>
+        <p id="order-status" role="status" aria-live="polite"></p>
+      </section>
+
       {% if materials %}
       <div class="table-wrap">
         <table>
@@ -80,11 +118,12 @@
               <th scope="col">Can ship</th>
               <th scope="col">Unit price</th>
               <th scope="col">Status</th>
+              <th scope="col">Order</th>
             </tr>
           </thead>
           <tbody>
             {% for material in materials %}
-            <tr id="material-{{ material.sku }}">
+            <tr id="material-{{ material.sku }}" data-material-row>
               <th scope="row"><code>{{ material.sku }}</code></th>
               <td>
                 {{ material.description }}
@@ -92,16 +131,24 @@
                 {% if material.spec_grade %}<span class="spec">{{ material.spec_grade }}</span>{% endif %}
               </td>
               <td>{{ material.warehouse }}</td>
-              <td class="numeric">{{ material.qty_on_hand }} {{ material.unit_of_measure }}</td>
-              <td class="numeric">{{ material.qty_reserved }} {{ material.unit_of_measure }}</td>
-              <td class="numeric">{{ material.qty_available }} {{ material.unit_of_measure }}</td>
-              <td class="numeric">{{ material.qty_shippable }} {{ material.unit_of_measure }}</td>
+              <td class="numeric" data-field="qty_on_hand">{{ material.qty_on_hand }} {{ material.unit_of_measure }}</td>
+              <td class="numeric" data-field="qty_reserved">{{ material.qty_reserved }} {{ material.unit_of_measure }}</td>
+              <td class="numeric" data-field="qty_available">{{ material.qty_available }} {{ material.unit_of_measure }}</td>
+              <td class="numeric" data-field="qty_shippable">{{ material.qty_shippable }} {{ material.unit_of_measure }}</td>
               <td class="numeric">{{ "%.2f"|format(material.unit_price) }} {{ material.currency }}</td>
-              <td>
+              <td data-field="status">
                 <span class="status status-{{ material.status }}">{{ material.status|replace('_', ' ')|title }}</span>
                 {% for condition in material.conditions %}
                 <span class="condition">{{ condition|replace('_', ' ') }}</span>
                 {% endfor %}
+              </td>
+              <td>
+                <button
+                  class="order-row-action button-secondary"
+                  type="button"
+                  data-sku="{{ material.sku }}"
+                  data-description="{{ material.description }}"
+                >Order</button>
               </td>
             </tr>
             {% endfor %}
