@@ -17,6 +17,8 @@ from inventory_assistant.api.auth import BasicAuthMiddleware
 from inventory_assistant.api.routes import router as catalog_router
 from inventory_assistant.api.schemas import HealthResponse
 from inventory_assistant.application.catalog import CatalogService
+from inventory_assistant.application.inventory import InventoryService
+from inventory_assistant.application.suppliers import SupplierService
 from inventory_assistant.config import Settings
 from inventory_assistant.data.json_repository import JsonInventoryRepository
 
@@ -34,9 +36,13 @@ def create_app() -> FastAPI:
         settings = Settings.from_environment()
         repository = JsonInventoryRepository.load(settings.inventory_data_path)
         catalog_service = CatalogService(repository)
+        inventory_service = InventoryService(repository)
+        supplier_service = SupplierService(repository)
 
         application.state.settings = settings
         application.state.catalog_service = catalog_service
+        application.state.inventory_service = inventory_service
+        application.state.supplier_service = supplier_service
         application.state.ready = True
 
         summary = catalog_service.get_summary()
@@ -79,12 +85,14 @@ def create_app() -> FastAPI:
     ) -> HTMLResponse:
         service = request.app.state.catalog_service
         materials = service.find_materials(q)
+        alerts = request.app.state.inventory_service.list_overallocation_alerts()
         return TEMPLATES.TemplateResponse(
             request=request,
             name="catalogue.html",
             context={
                 "summary": service.get_summary(),
                 "materials": materials,
+                "alerts": alerts,
                 "query": " ".join(q.split()),
                 "result_count": len(materials),
             },

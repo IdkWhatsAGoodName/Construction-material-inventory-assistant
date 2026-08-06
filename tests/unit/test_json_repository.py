@@ -30,6 +30,12 @@ def test_loads_expected_source_snapshot() -> None:
     assert len(repository.dataset.materials) == 77
     assert len(repository.list_materials()) == 77
     assert repository.dataset.meta.currency == "CAD"
+    assert len(repository.list_suppliers()) == 9
+    assert repository.meta == repository.dataset.meta
+    assert repository.get_material("stl-w12x40-a992").sku == "STL-W12X40-A992"
+    assert repository.get_supplier("sup-002").supplier_id == "SUP-002"
+    assert repository.get_material("unknown") is None
+    assert repository.get_supplier("unknown") is None
 
 
 @pytest.mark.parametrize(

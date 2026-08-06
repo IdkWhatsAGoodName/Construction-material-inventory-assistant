@@ -14,6 +14,7 @@
 - Prioritize designs and tools that enable fast development at small scale, and document what would be changed or added with more time and resources in the "Future TODOs" section.
 - Never create commits or push commits, tags, branches, or other Git refs to a remote repository on the human’s behalf. Leave code change ready on local and let human manage source control.
 - Always remember to add Bruno requests for testing after implementing code where applicable. Leave request validation to human.
+- On Windows with Python 3.13 or later, run the project-local pytest executable outside the Codex filesystem sandbox because Python's `0o700` temporary-directory ACLs cannot be reopened by the sandbox token. Keep the permission exception scoped to the project-local pytest command, and never run pytest as Windows Administrator.
 
 
 # Design and implementation plans
@@ -22,7 +23,7 @@
 
 Build the construction material inventory assistant specified in `Requirements/README.md`. The delivered program must ingest the supplied synthetic JSON, expose deterministic inventory and ordering behavior, provide a conversational web interface, and be deployable at a public URL. Every number shown to a user must originate from application code operating on the source data/database, never from model-generated knowledge.
 
-Current status: steelthread 1 is implemented and locally verified but not yet deployed. The FastAPI application validates and reads the supplied JSON, serves the protected catalogue and catalogue APIs, and exposes public health checks. All 45 tests, Ruff checks, dependency consistency, a local Uvicorn smoke test, and Render Blueprint validation pass. The human must review, commit, and push the uncommitted changes before CI, Blueprint creation, and public-URL verification can complete the steelthread. Python 3.13, Git, GitHub CLI, Render CLI, the curated GitHub and Render Codex plugins, and Render MCP are installed and verified. Use authenticated GitHub CLI for programmatic GitHub operations: the human explicitly waived the GitHub App connector check after Codex CLI's connector-directory request was blocked by a Cloudflare challenge even though Codex Doctor and GitHub CLI authentication passed.
+Current status: steelthread 1 is complete and deployed at `https://sidian-inventory-assistant-demo.onrender.com`; its public health checks return `200`, its authentication boundary returns `401` without credentials, and Render deployed commit `82e494f` after CI passed. Steelthread 2 is implemented and locally verified with 80 passing tests and clean Ruff checks. It adds persistence-independent read services, conservative matching, deterministic inventory and supplier responses, derived availability/status fields, read-only APIs, and the accessible over-allocation banner. The human must review, commit, push, run the Bruno requests manually, and verify the resulting CI-gated Render deployment before steelthread 2 is complete. Python 3.13, Git, GitHub CLI, Render CLI, the curated GitHub and Render Codex plugins, and Render MCP are installed and verified. Use authenticated GitHub CLI for programmatic GitHub operations: the human explicitly waived the GitHub App connector check after Codex CLI's connector-directory request was blocked by a Cloudflare challenge even though Codex Doctor and GitHub CLI authentication passed.
 
 ## Agreed demo design
 
@@ -85,7 +86,7 @@ Do not split the demo into separately deployed frontend, agent, and inventory se
 
 Each numbered step is independently runnable and is completed only when its stated verification passes. Do not begin a later step by breaking or replacing the working path from an earlier one.
 
-1. **Deployed JSON-reading web MVP**
+1. **Deployed JSON-reading web MVP — complete**
    - Status: implementation and local verification are complete; human commit/push, CI verification, initial Render Blueprint creation, and public smoke testing remain.
    - Scaffold the FastAPI service, `pyproject.toml`, compiled requirement files, Ruff/pytest configuration, tests, and minimal browser page.
    - Load and validate `Requirements/inventory_data.json` through a JSON repository without mutating it.
@@ -94,7 +95,7 @@ Each numbered step is independently runnable and is completed only when its stat
    - Add the GitHub Actions CI workflow and Render Blueprint, then deploy the working MVP publicly before adding later behavior.
    - Verify startup failure for missing/invalid data and missing credentials, protected-route `401` behavior, authorized access, public health checks, the displayed counts of 9 suppliers and 77 materials, and the public URL.
 
-2. **Deterministic read-only inventory behavior**
+2. **Deterministic read-only inventory behavior — implemented locally; deployment pending**
    - Add domain models, raw availability, non-negative shippable quantity, explicit over-allocation status, catalogue matching, supplier lookup, and deterministic message rendering.
    - Add read-only application services and HTTP endpoints for stock, search, supplier terms, and inventory alerts.
    - Add the persistent, non-modal over-allocation banner to the protected browser UI, with affected-material links and accessible semantics.

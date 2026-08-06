@@ -1,0 +1,1 @@
+"""Deterministic inventory domain rules."""

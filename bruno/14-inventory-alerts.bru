@@ -1,0 +1,28 @@
+meta {
+  name: Inventory - Over-allocation Alerts
+  type: http
+  seq: 14
+}
+
+get {
+  url: {{baseUrl}}/api/inventory/alerts
+  body: none
+  auth: basic
+}
+
+auth:basic {
+  username: {{demoUsername}}
+  password: {{demoPassword}}
+}
+
+tests {
+  test("returns only the known over-allocation discrepancy", function () {
+    const body = res.getBody();
+
+    expect(res.getStatus()).to.equal(200);
+    expect(body.count).to.equal(1);
+    expect(body.items[0].sku).to.equal("STL-W12X40-A992");
+    expect(body.items[0].qty_available).to.equal(-2);
+    expect(body.items[0].qty_shippable).to.equal(0);
+  });
+}

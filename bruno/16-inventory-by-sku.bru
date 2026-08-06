@@ -1,0 +1,29 @@
+meta {
+  name: Inventory - Exact SKU
+  type: http
+  seq: 16
+}
+
+get {
+  url: {{baseUrl}}/api/inventory/RBR-20M-EPOXY
+  body: none
+  auth: basic
+}
+
+auth:basic {
+  username: {{demoUsername}}
+  password: {{demoPassword}}
+}
+
+tests {
+  test("reports fully reserved stock as unavailable", function () {
+    const body = res.getBody();
+
+    expect(res.getStatus()).to.equal(200);
+    expect(body.qty_on_hand).to.equal(18);
+    expect(body.qty_reserved).to.equal(18);
+    expect(body.qty_available).to.equal(0);
+    expect(body.qty_shippable).to.equal(0);
+    expect(body.conditions).to.include("fully_reserved");
+  });
+}

@@ -6,17 +6,28 @@ steelthreads.
 
 ## Current implementation
 
-Steelthread 1 is a read-only FastAPI web application that:
+Steelthreads 1 and 2 provide a read-only FastAPI web application that:
 
 - validates and loads the supplied synthetic JSON at process startup;
-- displays all 77 materials and supports literal text filtering;
-- exposes protected catalogue APIs and API documentation;
+- displays all 77 materials with raw availability, non-negative shippable quantity, status, and
+  ordered inventory conditions;
+- conservatively matches normalized catalogue tokens while reporting exact, unique, ambiguous,
+  and no-match outcomes without fuzzy substitution;
+- exposes protected catalogue, inventory, supplier, and discrepancy APIs plus API documentation;
+- keeps the known over-allocation visible in a linked, non-modal warning banner;
+- renders all inventory and supplier facts through deterministic application services shared by
+  the HTTP and browser layers;
 - protects every non-health route with one shared HTTP Basic credential; and
 - provides public liveness and readiness endpoints for Render.
 
-It deliberately displays `qty_on_hand` and `qty_reserved` under their source names. It does not
-yet calculate or label availability. Deterministic availability rules, inventory alerts, SQLite,
-orders, and conversational interpretation are later steelthreads.
+The application preserves raw `qty_available = qty_on_hand - qty_reserved`, including negative
+values. It separately reports `qty_shippable = max(qty_available, 0)` and never describes negative
+stock as shippable. SQLite, orders, and conversational interpretation remain later steelthreads.
+
+Matching uses Unicode NFKC normalization, case folding, punctuation/separator normalization, and
+a small alias set for common units and catalogue plurals. Exact normalized SKUs and full
+descriptions win; otherwise every meaningful query token must occur in the SKU, description,
+category, grade, or unit. The matcher does not rank, fuzz, or silently choose a near match.
 
 ## Run locally
 
@@ -42,12 +53,9 @@ Run the verification suite with:
 .\.venv\Scripts\pytest.exe
 ```
 
-The [`bruno`](bruno) collection provides executable HTTP checks for every MVP endpoint and the
-authentication gate. Its environment reads `DEMO_USERNAME` and `DEMO_PASSWORD` from the Bruno
-process, so no real credential is stored in the collection. With the application running, execute
-`bru run bruno --env Local` from the repository root.
+The [`bruno`](bruno) collection provides human-run HTTP checks for the protected endpoints and authentication gate. Its environment reads `DEMO_USERNAME` and `DEMO_PASSWORD` from the Bruno process, so no real credential is stored in the collection. Run these against local with the Bruno app or CLI.
 
-## MVP routes
+## Read-only routes
 
 The following health routes are intentionally public:
 
@@ -56,22 +64,27 @@ The following health routes are intentionally public:
 
 All other routes require HTTP Basic authentication:
 
-- `GET /` — server-rendered catalogue and search form
+- `GET /` — server-rendered catalogue, deterministic filter, and discrepancy warning
 - `GET /api/catalog/summary` — source metadata and record counts
-- `GET /api/catalog/materials?q=` — material list with optional literal filtering
+- `GET /api/catalog/materials?q=` — material list with optional all-token filtering
+- `GET /api/inventory/search?q=` — explicit exact, unique, ambiguous, or no-match outcome
+- `GET /api/inventory/{sku}` — exact case-insensitive SKU lookup
+- `GET /api/inventory/alerts` — current over-allocation discrepancies
+- `GET /api/suppliers?category=` — supplier resolution for a material category
+- `GET /api/suppliers/{supplier_id}` — exact case-insensitive supplier lookup
 - `GET /openapi.json`, `GET /docs`, and `GET /redoc` — API contract and interactive docs
 
-`/api/catalog/summary` is an application API for the protected browser and operators. A future
-LLM will not receive arbitrary HTTP access and this route will not be included in its explicit
-function declarations.
+These application APIs serve the protected browser and operators. A future LLM will not receive
+arbitrary HTTP or dataset access; it will be restricted to explicit function declarations backed
+by the same deterministic application services.
 
 ## Deployment
 
-The root `render.yaml` defines one free native-Python Render web service. Render waits for the
-GitHub Actions checks to pass before automatically deploying updates from `main`. During the
-initial Blueprint creation flow, set `DEMO_USERNAME` and `DEMO_PASSWORD`; both are declared with
-`sync: false` and no secret values belong in the repository.
+The root `render.yaml` defines one free native-Python Render web service at
+`https://sidian-inventory-assistant-demo.onrender.com`. Render waits for the GitHub Actions checks
+to pass before automatically deploying updates from `main`. `DEMO_USERNAME` and `DEMO_PASSWORD`
+are Render secrets declared with `sync: false`; no secret values belong in the repository.
 
-Render's free service filesystem and process lifetime are ephemeral. This read-only slice simply
+Render's free service filesystem and process lifetime are ephemeral. The current read-only slice
 reloads the committed source JSON after a restart. Later SQLite order state will intentionally
 reset on restart and will be documented when that behavior exists.

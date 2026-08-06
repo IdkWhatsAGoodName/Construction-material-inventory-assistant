@@ -12,7 +12,7 @@
         <p class="eyebrow">Inventory assistant demo</p>
         <h1>Construction material catalogue</h1>
         <p class="lede">
-          {{ summary.dataset_name }} · As of {{ summary.as_of_date }} · {{ summary.currency }}
+          {{ summary.dataset_name }} &middot; As of {{ summary.as_of_date }} &middot; {{ summary.currency }}
         </p>
       </div>
       <dl class="counts" aria-label="Dataset counts">
@@ -22,6 +22,26 @@
     </header>
 
     <main>
+      {% if alerts %}
+      <section class="inventory-warning" aria-labelledby="inventory-warning-title">
+        <h2 id="inventory-warning-title">Inventory discrepancy requires attention</h2>
+        <p>
+          {{ alerts|length }} material{% if alerts|length != 1 %}s are{% else %} is{% endif %}
+          over-allocated. Zero units can ship for each affected material until inventory is corrected.
+          This demo has no correction workflow.
+        </p>
+        <ul>
+          {% for alert in alerts %}
+          <li>
+            <a href="/?q={{ alert.sku|urlencode }}#material-{{ alert.sku }}">{{ alert.sku }}</a>:
+            over-allocated by {{ alert.overallocated_by }} {{ alert.unit_of_measure }}
+            ({{ alert.qty_on_hand }} on hand, {{ alert.qty_reserved }} reserved).
+          </li>
+          {% endfor %}
+        </ul>
+      </section>
+      {% endif %}
+
       <p class="source-note">{{ summary.notes }}</p>
 
       <form class="search" method="get" action="/" role="search">
@@ -33,7 +53,7 @@
             type="search"
             maxlength="100"
             value="{{ query }}"
-            placeholder="SKU, description, category, grade, or warehouse"
+            placeholder="SKU, description, category, grade, or unit"
           >
           <button type="submit">Search</button>
           {% if query %}<a href="/" class="clear-link">Clear</a>{% endif %}
@@ -42,7 +62,7 @@
 
       <p class="results-summary">
         Showing {{ result_count }} of {{ summary.material_count }} materials
-        {% if query %}for “{{ query }}”{% endif %}.
+        {% if query %}for &ldquo;{{ query }}&rdquo;{% endif %}.
       </p>
 
       {% if materials %}
@@ -53,33 +73,35 @@
             <tr>
               <th scope="col">SKU</th>
               <th scope="col">Description</th>
-              <th scope="col">Category</th>
               <th scope="col">Warehouse</th>
               <th scope="col">On hand</th>
               <th scope="col">Reserved</th>
+              <th scope="col">Raw availability</th>
+              <th scope="col">Can ship</th>
               <th scope="col">Unit price</th>
               <th scope="col">Status</th>
             </tr>
           </thead>
           <tbody>
             {% for material in materials %}
-            <tr>
+            <tr id="material-{{ material.sku }}">
               <th scope="row"><code>{{ material.sku }}</code></th>
               <td>
                 {{ material.description }}
+                <span class="spec">{{ material.category }}</span>
                 {% if material.spec_grade %}<span class="spec">{{ material.spec_grade }}</span>{% endif %}
               </td>
-              <td>{{ material.category }}</td>
               <td>{{ material.warehouse }}</td>
               <td class="numeric">{{ material.qty_on_hand }} {{ material.unit_of_measure }}</td>
               <td class="numeric">{{ material.qty_reserved }} {{ material.unit_of_measure }}</td>
+              <td class="numeric">{{ material.qty_available }} {{ material.unit_of_measure }}</td>
+              <td class="numeric">{{ material.qty_shippable }} {{ material.unit_of_measure }}</td>
               <td class="numeric">{{ "%.2f"|format(material.unit_price) }} {{ material.currency }}</td>
               <td>
-                {% if material.discontinued %}
-                <span class="status status-discontinued">Discontinued</span>
-                {% else %}
-                <span class="status">Active</span>
-                {% endif %}
+                <span class="status status-{{ material.status }}">{{ material.status|replace('_', ' ')|title }}</span>
+                {% for condition in material.conditions %}
+                <span class="condition">{{ condition|replace('_', ' ') }}</span>
+                {% endfor %}
               </td>
             </tr>
             {% endfor %}
@@ -89,10 +111,12 @@
       {% else %}
       <section class="empty-state" aria-live="polite">
         <h2>No matching materials</h2>
-        <p>The catalogue contains no literal match for “{{ query }}”. Try another term or clear the filter.</p>
+        <p>
+          The catalogue contains no deterministic match for &ldquo;{{ query }}&rdquo;.
+          No substitute was selected. Try another term or clear the filter.
+        </p>
       </section>
       {% endif %}
     </main>
   </body>
 </html>
-

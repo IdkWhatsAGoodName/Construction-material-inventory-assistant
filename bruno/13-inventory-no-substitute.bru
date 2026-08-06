@@ -1,0 +1,27 @@
+meta {
+  name: Inventory - Missing Variant Is Not Substituted
+  type: http
+  seq: 13
+}
+
+get {
+  url: {{baseUrl}}/api/inventory/search?q=25M%20epoxy%20rebars
+  body: none
+  auth: basic
+}
+
+auth:basic {
+  username: {{demoUsername}}
+  password: {{demoPassword}}
+}
+
+tests {
+  test("returns an explicit no-match result", function () {
+    const body = res.getBody();
+
+    expect(res.getStatus()).to.equal(200);
+    expect(body.outcome).to.equal("no_match");
+    expect(body.item).to.equal(null);
+    expect(body.candidates).to.deep.equal([]);
+  });
+}

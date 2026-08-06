@@ -1,0 +1,29 @@
+meta {
+  name: Inventory - Search W12x40 Beam
+  type: http
+  seq: 12
+}
+
+get {
+  url: {{baseUrl}}/api/inventory/search?q=W12x40%20beams
+  body: none
+  auth: basic
+}
+
+auth:basic {
+  username: {{demoUsername}}
+  password: {{demoPassword}}
+}
+
+tests {
+  test("reports raw over-allocation and zero shippable stock", function () {
+    const body = res.getBody();
+
+    expect(res.getStatus()).to.equal(200);
+    expect(body.outcome).to.equal("unique_match");
+    expect(body.item.sku).to.equal("STL-W12X40-A992");
+    expect(body.item.qty_available).to.equal(-2);
+    expect(body.item.qty_shippable).to.equal(0);
+    expect(body.item.overallocated_by).to.equal(2);
+  });
+}

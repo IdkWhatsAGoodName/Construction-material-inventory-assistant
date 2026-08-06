@@ -85,6 +85,33 @@ main {
   padding-block: 1.5rem 4rem;
 }
 
+.inventory-warning {
+  margin-bottom: 1.5rem;
+  padding: 1rem 1.25rem;
+  border: 2px solid #a75d12;
+  border-radius: 0.75rem;
+  color: #572e08;
+  background: #fff2dc;
+}
+
+.inventory-warning h2 {
+  margin: 0;
+  font-size: 1.15rem;
+}
+
+.inventory-warning p {
+  margin-block: 0.45rem;
+}
+
+.inventory-warning ul {
+  margin-bottom: 0;
+}
+
+.inventory-warning a {
+  color: #663600;
+  font-weight: 750;
+}
+
 .source-note {
   margin-top: 0;
 }
@@ -203,6 +230,28 @@ code {
   background: #f9dfdf;
 }
 
+.status-overallocated {
+  color: #fff;
+  background: #9a3d19;
+}
+
+.status-unavailable {
+  color: #713e08;
+  background: #f9e8c8;
+}
+
+.condition {
+  display: block;
+  margin-top: 0.25rem;
+  color: #5e6962;
+  font-size: 0.72rem;
+  white-space: nowrap;
+}
+
+tr:target > * {
+  background: #fff7cc;
+}
+
 .empty-state {
   padding: 2.5rem;
   border: 1px dashed #a9b4ab;
@@ -241,4 +290,3 @@ code {
     flex-wrap: wrap;
   }
 }
-

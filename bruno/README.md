@@ -1,7 +1,8 @@
 # Bruno endpoint checks
 
-This collection exercises every endpoint in the JSON-reading MVP plus the shared authentication
-gate. It contains no real credentials.
+This collection exercises the JSON-reading MVP, deterministic read-only inventory and supplier
+endpoints, and the shared authentication gate. It contains no real credentials. The human runs
+and validates these requests manually; agents only keep the request definitions current.
 
 1. Start the application with the ignored local `bruno/.env` file:
 

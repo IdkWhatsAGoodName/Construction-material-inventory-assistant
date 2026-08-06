@@ -6,7 +6,7 @@ from pathlib import Path
 
 from pydantic import ValidationError
 
-from inventory_assistant.data.models import InventoryDataset, Material
+from inventory_assistant.data.models import DatasetMeta, InventoryDataset, Material, Supplier
 
 
 class InventoryDataError(RuntimeError):
@@ -19,6 +19,11 @@ class JsonInventoryRepository:
     def __init__(self, dataset: InventoryDataset) -> None:
         self._dataset = dataset
         self._materials = tuple(dataset.materials)
+        self._suppliers = tuple(dataset.suppliers)
+        self._materials_by_sku = {material.sku.casefold(): material for material in self._materials}
+        self._suppliers_by_id = {
+            supplier.supplier_id.casefold(): supplier for supplier in self._suppliers
+        }
 
     @classmethod
     def load(cls, path: Path) -> JsonInventoryRepository:
@@ -38,8 +43,21 @@ class JsonInventoryRepository:
     def dataset(self) -> InventoryDataset:
         return self._dataset
 
+    @property
+    def meta(self) -> DatasetMeta:
+        return self._dataset.meta
+
     def list_materials(self) -> tuple[Material, ...]:
         return self._materials
+
+    def list_suppliers(self) -> tuple[Supplier, ...]:
+        return self._suppliers
+
+    def get_material(self, sku: str) -> Material | None:
+        return self._materials_by_sku.get(sku.strip().casefold())
+
+    def get_supplier(self, supplier_id: str) -> Supplier | None:
+        return self._suppliers_by_id.get(supplier_id.strip().casefold())
 
     def search_materials(self, query: str) -> tuple[Material, ...]:
         normalized = _normalize(query)

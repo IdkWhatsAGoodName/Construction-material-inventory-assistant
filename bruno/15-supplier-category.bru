@@ -1,0 +1,28 @@
+meta {
+  name: Suppliers - Rebar Category
+  type: http
+  seq: 15
+}
+
+get {
+  url: {{baseUrl}}/api/suppliers?category=rebar
+  body: none
+  auth: basic
+}
+
+auth:basic {
+  username: {{demoUsername}}
+  password: {{demoPassword}}
+}
+
+tests {
+  test("returns deterministic rebar supplier terms", function () {
+    const body = res.getBody();
+
+    expect(res.getStatus()).to.equal(200);
+    expect(body.outcome).to.equal("unique_match");
+    expect(body.supplier.supplier_id).to.equal("SUP-002");
+    expect(body.supplier.payment_terms).to.equal("NET30");
+    expect(body.supplier.standard_lead_time_days).to.equal(7);
+  });
+}
