@@ -22,7 +22,7 @@ class CatalogSummary:
 
 
 class CatalogService:
-    """Application boundary for the JSON-reading MVP."""
+    """Persistence-independent application boundary for catalogue reads."""
 
     def __init__(self, repository: InventoryRepository) -> None:
         self._repository = repository

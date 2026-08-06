@@ -37,8 +37,11 @@ def test_relative_inventory_path_is_resolved_from_project_root(
     monkeypatch.setenv("DEMO_USERNAME", "user")
     monkeypatch.setenv("DEMO_PASSWORD", "password")
     monkeypatch.setenv("INVENTORY_DATA_PATH", "fixtures/data.json")
+    monkeypatch.setenv("INVENTORY_DB_PATH", "var/test.sqlite3")
 
     settings = Settings.from_environment()
 
     assert settings.inventory_data_path == (PROJECT_ROOT / "fixtures/data.json").resolve()
+    assert settings.inventory_db_path == (PROJECT_ROOT / "var/test.sqlite3").resolve()
     assert isinstance(settings.inventory_data_path, Path)
+    assert isinstance(settings.inventory_db_path, Path)

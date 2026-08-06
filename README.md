@@ -6,9 +6,10 @@ steelthreads.
 
 ## Current implementation
 
-Steelthreads 1 and 2 provide a read-only FastAPI web application that:
+Steelthreads 1 through 3 provide a read-only FastAPI web application that:
 
-- validates and loads the supplied synthetic JSON at process startup;
+- validates the supplied synthetic JSON and atomically rebuilds a SQLite snapshot at process
+  startup;
 - displays all 77 materials with raw availability, non-negative shippable quantity, status, and
   ordered inventory conditions;
 - conservatively matches normalized catalogue tokens while reporting exact, unique, ambiguous,
@@ -22,7 +23,15 @@ Steelthreads 1 and 2 provide a read-only FastAPI web application that:
 
 The application preserves raw `qty_available = qty_on_hand - qty_reserved`, including negative
 values. It separately reports `qty_shippable = max(qty_available, 0)` and never describes negative
-stock as shippable. SQLite, orders, and conversational interpretation remain later steelthreads.
+stock as shippable. Order mutations and conversational interpretation remain later steelthreads.
+
+The SQLite schema normalizes snapshot metadata, suppliers, and materials; enables foreign-key
+checks; uses [`STRICT` tables](https://www.sqlite.org/stricttables.html); and stores CAD prices as
+integer cents. Availability remains derived rather than stored. Ingestion records the source
+filename, byte length, SHA-256 digest, timestamp, schema version, and record counts. A fully built
+and parity-checked sibling file replaces the session database only after validation, so a failed
+ingestion leaves the prior valid file intact. Each successful process start intentionally replaces
+any previous session changes with the committed JSON values.
 
 Matching uses Unicode NFKC normalization, case folding, punctuation/separator normalization, and
 a small alias set for common units and catalogue plurals. Exact normalized SKUs and full
@@ -43,7 +52,18 @@ $env:DEMO_PASSWORD = "choose-a-long-random-password"
 
 Then open `http://127.0.0.1:8000/` and enter the configured credential. Do not commit local
 credentials. `INVENTORY_DATA_PATH` can override the default
-`Requirements/inventory_data.json` path for explicit local testing.
+`Requirements/inventory_data.json` source and `INVENTORY_DB_PATH` can override the default
+`var/inventory.sqlite3` destination. Relative paths resolve from the project root.
+
+To build the same snapshot without starting the web application or requiring demo credentials:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\ingest.py
+```
+
+The command accepts `--source` and `--database`; command-line values take precedence over the
+corresponding environment variables. It is an offline operation—there is deliberately no runtime
+re-ingestion HTTP endpoint.
 
 Run the verification suite with:
 
@@ -85,6 +105,7 @@ The root `render.yaml` defines one free native-Python Render web service at
 to pass before automatically deploying updates from `main`. `DEMO_USERNAME` and `DEMO_PASSWORD`
 are Render secrets declared with `sync: false`; no secret values belong in the repository.
 
-Render's free service filesystem and process lifetime are ephemeral. The current read-only slice
-reloads the committed source JSON after a restart. Later SQLite order state will intentionally
-reset on restart and will be documented when that behavior exists.
+Render's free service filesystem and process lifetime are ephemeral. Every application process
+start rebuilds `var/inventory.sqlite3` from the committed source JSON before readiness. Future
+SQLite reservation state will therefore intentionally reset on spin-down, restart, or redeploy.
+This session-lifetime behavior is suitable for the demo, not durable order storage.

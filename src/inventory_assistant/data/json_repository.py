@@ -27,16 +27,7 @@ class JsonInventoryRepository:
 
     @classmethod
     def load(cls, path: Path) -> JsonInventoryRepository:
-        try:
-            source = path.read_text(encoding="utf-8")
-        except OSError as error:
-            raise InventoryDataError(f"Unable to read inventory data at {path}") from error
-
-        try:
-            dataset = InventoryDataset.model_validate_json(source, strict=True)
-        except (ValidationError, ValueError) as error:
-            raise InventoryDataError(f"Invalid inventory data at {path}: {error}") from error
-
+        dataset, _ = read_inventory_source(path)
         return cls(dataset)
 
     @property
@@ -80,3 +71,19 @@ class JsonInventoryRepository:
 
 def _normalize(value: str) -> str:
     return " ".join(value.split()).casefold()
+
+
+def read_inventory_source(path: Path) -> tuple[InventoryDataset, bytes]:
+    """Read and validate a source snapshot once, returning its exact bytes."""
+
+    try:
+        source = path.read_bytes()
+    except OSError as error:
+        raise InventoryDataError(f"Unable to read inventory data at {path}") from error
+
+    try:
+        dataset = InventoryDataset.model_validate_json(source, strict=True)
+    except (ValidationError, ValueError) as error:
+        raise InventoryDataError(f"Invalid inventory data at {path}: {error}") from error
+
+    return dataset, source

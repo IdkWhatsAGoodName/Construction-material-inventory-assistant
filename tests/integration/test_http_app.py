@@ -8,6 +8,7 @@ from fastapi.testclient import TestClient
 
 from inventory_assistant.config import ConfigurationError
 from inventory_assistant.data.json_repository import InventoryDataError
+from inventory_assistant.data.sqlite_repository import connect_database
 from inventory_assistant.main import create_app
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -283,6 +284,49 @@ def test_startup_fails_with_invalid_data(monkeypatch: pytest.MonkeyPatch, tmp_pa
     monkeypatch.setenv("DEMO_USERNAME", "user")
     monkeypatch.setenv("DEMO_PASSWORD", "password")
     monkeypatch.setenv("INVENTORY_DATA_PATH", str(invalid_source))
+    monkeypatch.setenv("INVENTORY_DB_PATH", str(tmp_path / "inventory.sqlite3"))
 
     with pytest.raises(InventoryDataError), TestClient(create_app()):
         pass
+
+
+def test_startup_builds_sqlite_snapshot_and_resets_session_changes(
+    configured_environment: None,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    database_path = tmp_path / "inventory.sqlite3"
+    monkeypatch.setenv("INVENTORY_DB_PATH", str(database_path))
+
+    with TestClient(create_app()):
+        pass
+
+    with connect_database(database_path, read_only=False) as connection:
+        connection.execute("UPDATE materials SET qty_reserved = 99 WHERE sku = 'STL-W12X40-A992'")
+
+    with TestClient(create_app()) as restarted_client:
+        material = restarted_client.app.state.repository.get_material("STL-W12X40-A992")
+
+    assert material is not None
+    assert material.qty_reserved == 6
+
+
+def test_failed_startup_preserves_prior_valid_database(
+    configured_environment: None,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    database_path = tmp_path / "inventory.sqlite3"
+    monkeypatch.setenv("INVENTORY_DB_PATH", str(database_path))
+    with TestClient(create_app()):
+        pass
+    original_database = database_path.read_bytes()
+
+    invalid_source = tmp_path / "invalid.json"
+    invalid_source.write_text("{}", encoding="utf-8")
+    monkeypatch.setenv("INVENTORY_DATA_PATH", str(invalid_source))
+
+    with pytest.raises(InventoryDataError), TestClient(create_app()):
+        pass
+
+    assert database_path.read_bytes() == original_database

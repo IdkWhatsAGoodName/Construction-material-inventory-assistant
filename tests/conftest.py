@@ -15,10 +15,11 @@ PASSWORD = "correct horse battery staple"
 
 
 @pytest.fixture
-def configured_environment(monkeypatch: pytest.MonkeyPatch) -> None:
+def configured_environment(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     monkeypatch.setenv("DEMO_USERNAME", USERNAME)
     monkeypatch.setenv("DEMO_PASSWORD", PASSWORD)
     monkeypatch.setenv("INVENTORY_DATA_PATH", str(SOURCE_DATA))
+    monkeypatch.setenv("INVENTORY_DB_PATH", str(tmp_path / "inventory.sqlite3"))
 
 
 @pytest.fixture

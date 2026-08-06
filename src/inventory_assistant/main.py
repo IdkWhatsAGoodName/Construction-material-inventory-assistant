@@ -20,7 +20,8 @@ from inventory_assistant.application.catalog import CatalogService
 from inventory_assistant.application.inventory import InventoryService
 from inventory_assistant.application.suppliers import SupplierService
 from inventory_assistant.config import Settings
-from inventory_assistant.data.json_repository import JsonInventoryRepository
+from inventory_assistant.data.ingestion import ingest_inventory
+from inventory_assistant.data.sqlite_repository import SQLiteInventoryRepository
 
 LOGGER = logging.getLogger(__name__)
 WEB_ROOT = Path(__file__).resolve().parent / "web"
@@ -34,12 +35,17 @@ def create_app() -> FastAPI:
     async def lifespan(application: FastAPI) -> AsyncIterator[None]:
         application.state.ready = False
         settings = Settings.from_environment()
-        repository = JsonInventoryRepository.load(settings.inventory_data_path)
+        ingestion = ingest_inventory(
+            settings.inventory_data_path,
+            settings.inventory_db_path,
+        )
+        repository = SQLiteInventoryRepository(ingestion.database_path)
         catalog_service = CatalogService(repository)
         inventory_service = InventoryService(repository)
         supplier_service = SupplierService(repository)
 
         application.state.settings = settings
+        application.state.repository = repository
         application.state.catalog_service = catalog_service
         application.state.inventory_service = inventory_service
         application.state.supplier_service = supplier_service
@@ -47,9 +53,10 @@ def create_app() -> FastAPI:
 
         summary = catalog_service.get_summary()
         LOGGER.info(
-            "Inventory snapshot loaded: %d suppliers, %d materials",
+            "SQLite inventory snapshot loaded: %d suppliers, %d materials (source sha256 %s)",
             summary.supplier_count,
             summary.material_count,
+            ingestion.source_sha256,
         )
         try:
             yield

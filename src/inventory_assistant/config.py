@@ -20,6 +20,7 @@ class Settings:
     demo_username: str
     demo_password: str
     inventory_data_path: Path
+    inventory_db_path: Path
 
     @classmethod
     def from_environment(cls) -> Settings:
@@ -39,14 +40,26 @@ class Settings:
             joined = ", ".join(missing)
             raise ConfigurationError(f"Missing required environment variable(s): {joined}")
 
-        configured_path = Path(
-            os.environ.get("INVENTORY_DATA_PATH", "Requirements/inventory_data.json")
-        )
-        if not configured_path.is_absolute():
-            configured_path = PROJECT_ROOT / configured_path
-
         return cls(
             demo_username=username,
             demo_password=password,
-            inventory_data_path=configured_path.resolve(),
+            inventory_data_path=inventory_data_path_from_environment(),
+            inventory_db_path=inventory_database_path_from_environment(),
         )
+
+
+def resolve_project_path(value: str | Path) -> Path:
+    configured_path = Path(value)
+    if not configured_path.is_absolute():
+        configured_path = PROJECT_ROOT / configured_path
+    return configured_path.resolve()
+
+
+def inventory_data_path_from_environment() -> Path:
+    return resolve_project_path(
+        os.environ.get("INVENTORY_DATA_PATH", "Requirements/inventory_data.json")
+    )
+
+
+def inventory_database_path_from_environment() -> Path:
+    return resolve_project_path(os.environ.get("INVENTORY_DB_PATH", "var/inventory.sqlite3"))

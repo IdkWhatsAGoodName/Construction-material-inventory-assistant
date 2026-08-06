@@ -71,10 +71,14 @@ class InventoryDataset(SourceModel):
         supplier_ids = [supplier.supplier_id for supplier in self.suppliers]
         if len(supplier_ids) != len(set(supplier_ids)):
             raise ValueError("supplier_id values must be unique")
+        if len(supplier_ids) != len({supplier_id.casefold() for supplier_id in supplier_ids}):
+            raise ValueError("supplier_id values must be unique case-insensitively")
 
         skus = [material.sku for material in self.materials]
         if len(skus) != len(set(skus)):
             raise ValueError("material sku values must be unique")
+        if len(skus) != len({sku.casefold() for sku in skus}):
+            raise ValueError("material sku values must be unique case-insensitively")
 
         known_suppliers = set(supplier_ids)
         missing_references = sorted(

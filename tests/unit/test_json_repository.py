@@ -96,6 +96,7 @@ def test_malformed_json_fails_loading(tmp_path: Path) -> None:
         lambda payload: payload["materials"][0].update(qty_on_hand=-1),
         lambda payload: payload["materials"][0].update(qty_on_hand="4"),
         lambda payload: payload["materials"][1].update(sku=payload["materials"][0]["sku"]),
+        lambda payload: payload["materials"][1].update(sku=payload["materials"][0]["sku"].lower()),
         lambda payload: payload["materials"][0].update(primary_supplier_id="SUP-404"),
         lambda payload: payload["materials"][0].update(currency="USD"),
         lambda payload: payload["materials"][0].pop("warehouse"),
