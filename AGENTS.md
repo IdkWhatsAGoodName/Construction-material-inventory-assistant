@@ -23,7 +23,7 @@
 
 Build the construction material inventory assistant specified in `Requirements/README.md`. The delivered program must ingest the supplied synthetic JSON, expose deterministic inventory and ordering behavior, provide a conversational web interface, and be deployable at a public URL. Every number shown to a user must originate from application code operating on the source data/database, never from model-generated knowledge.
 
-Current status: steelthreads 1 through 3 are complete and deployed at `https://sidian-inventory-assistant-demo.onrender.com`. Steelthread 3 commit `3fff68a` passed 96 local tests, Ruff checks, GitHub Actions CI run `31088132893`, the public liveness/readiness and authentication-boundary smoke checks, and the human's local database-reset and protected remote verification. Steelthread 4 deterministic ordering is implemented locally with 140 passing tests, clean Ruff checks, successful wheel/asset packaging, JavaScript syntax validation, dependency validation, and an ingestion smoke test. Human review, Bruno/browser validation, commit/push, CI, and deployment verification remain. Python 3.13, Git, GitHub CLI, Render CLI, the curated GitHub and Render Codex plugins, and Render MCP are installed and verified. Use authenticated GitHub CLI for programmatic GitHub operations: the human explicitly waived the GitHub App connector check after Codex CLI's connector-directory request was blocked by a Cloudflare challenge even though Codex Doctor and GitHub CLI authentication passed.
+Current status: steelthreads 1 through 4 are complete and deployed at `https://sidian-inventory-assistant-demo.onrender.com`. Steelthread 4 commit `4d0b0d3` passed 140 local tests, Ruff checks, wheel/asset packaging, JavaScript syntax validation, dependency validation, ingestion smoke testing, GitHub Actions CI run `31090725994`, public liveness/readiness and authentication-boundary smoke checks, and the human's protected local/remote browser verification. Python 3.13, Git, GitHub CLI, Render CLI, the curated GitHub and Render Codex plugins, and Render MCP are installed and verified. Use authenticated GitHub CLI for programmatic GitHub operations: the human explicitly waived the GitHub App connector check after Codex CLI's connector-directory request was blocked by a Cloudflare challenge even though Codex Doctor and GitHub CLI authentication passed.
 
 ## Agreed demo design
 
@@ -116,8 +116,8 @@ Each numbered step is independently runnable and is completed only when its stat
    - Keep the JSON repository available for the first-slice fallback and focused tests.
    - Verify repeated clean replacement, foreign-key integrity, preservation of the prior valid file after failed ingestion, readiness failure on invalid input, session reset behavior, and JSON/SQLite response parity.
 
-4. **Deterministic order workflow — implemented locally; deployment pending**
-   - Status: 140 tests, Ruff checks, wheel/asset packaging, JavaScript syntax validation, dependency validation, and ingestion smoke testing pass. Human Bruno/browser validation, source-control actions, CI, and deployed verification remain.
+4. **Deterministic order workflow — complete**
+   - Status: commit `4d0b0d3` passed 140 local tests, Ruff checks, wheel/asset packaging, JavaScript syntax validation, dependency validation, ingestion smoke testing, GitHub Actions CI run `31090725994`, public deployed smoke checks, and the human's protected local/remote browser verification.
    - Add order evaluation, process-memory confirmation/idempotency state, explicit confirmation, and transactional reservation updates without a first-class orders table.
    - Reject quantities above derived availability, discontinued materials, invalid quantities, unknown/ambiguous products, and stale confirmations. Never partially fulfill silently.
    - Increase `qty_reserved` without decreasing `qty_on_hand`; calculate totals in application code using decimal-safe currency arithmetic.
